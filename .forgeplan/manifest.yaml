@@ -1,0 +1,460 @@
+project:
+  name: "PlacementOps"
+  description: >-
+    A post-acute placement operating system managing the full workflow from
+    patient intake through clinical review, facility matching, staff-approved
+    outreach, and outcome tracking.
+  complexity_tier: "LARGE"
+  tech_stack:
+    runtime: "python+node"
+    language: "python+typescript"
+    database: "supabase"
+    orm: "sqlalchemy+supabase-js"
+    api_framework: "fastapi"
+    auth: "supabase-auth"
+    test_framework: "pytest+jest"
+    frontend: "next.js"
+    ui_library: "shadcn/ui+tailwind"
+    background_jobs: "fastapi-backgroundtasks"
+    deployment: "docker"
+    test_command: ""
+    dev_port: null
+    mock_mode: false
+  created_at: "2026-04-10T00:00:00Z"
+  revision_count: 0
+
+shared_models:
+  PatientCase:
+    fields:
+      id: "uuid"
+      organization_id: "uuid → organizations.id"
+      hospital_id: "uuid → hospital_reference.id"
+      patient_name: "string"
+      mrn: "string (nullable)"
+      current_status: "string (enum: new, intake_in_progress, intake_complete, needs_clinical_review, under_clinical_review, ready_for_matching, facility_options_generated, outreach_pending_approval, outreach_in_progress, pending_facility_response, accepted, declined_retry_needed, placed, closed)"
+      intake_complete: "boolean"
+      priority_level: "string (nullable)"
+      discharge_target_date: "date (nullable)"
+      insurance_primary: "string (nullable)"
+      patient_zip: "string (nullable)"
+      created_at: "timestamp"
+      updated_at: "timestamp"
+
+  Facility:
+    fields:
+      id: "uuid"
+      organization_id: "uuid → organizations.id"
+      facility_name: "string"
+      facility_type: "string (enum: snf, irf, ltach)"
+      city: "string (nullable)"
+      state: "string (nullable)"
+      zip: "string (nullable)"
+      latitude: "numeric (nullable)"
+      longitude: "numeric (nullable)"
+      active_status: "boolean"
+      created_at: "timestamp"
+      updated_at: "timestamp"
+
+  User:
+    fields:
+      id: "uuid"
+      organization_id: "uuid → organizations.id"
+      email: "string"
+      full_name: "string"
+      role_key: "string (enum: admin, intake_staff, clinical_reviewer, placement_coordinator, manager, read_only)"
+      status: "string (enum: active, inactive)"
+      created_at: "timestamp"
+      updated_at: "timestamp"
+
+  OutreachAction:
+    fields:
+      id: "uuid"
+      patient_case_id: "uuid → patient_cases.id"
+      facility_id: "uuid → facilities.id (nullable)"
+      template_id: "uuid → outreach_templates.id (nullable)"
+      channel: "string (enum: email, phone_manual, sms, voicemail_drop, voice_ai)"
+      approval_status: "string (enum: draft, pending_approval, approved, sent, canceled, failed)"
+      draft_subject: "string (nullable)"
+      draft_body: "string"
+      approved_by_user_id: "uuid (nullable)"
+      sent_at: "timestamp (nullable)"
+      created_at: "timestamp"
+
+  ClinicalAssessment:
+    fields:
+      id: "uuid"
+      patient_case_id: "uuid → patient_cases.id"
+      reviewer_user_id: "uuid → users.id"
+      recommended_level_of_care: "string (enum: snf, irf, ltach)"
+      trach: "boolean"
+      vent: "boolean"
+      dialysis_required: "boolean"
+      wound_care_needs: "boolean"
+      bariatric_needs: "boolean"
+      oxygen_required: "boolean"
+      iv_antibiotics: "boolean"
+      isolation_precautions: "string (nullable)"
+      review_status: "string (enum: draft, finalized)"
+      created_at: "timestamp"
+      updated_at: "timestamp"
+
+  FacilityMatch:
+    fields:
+      id: "uuid"
+      patient_case_id: "uuid → patient_cases.id"
+      facility_id: "uuid → facilities.id"
+      assessment_id: "uuid → clinical_assessments.id (nullable)"
+      overall_score: "numeric"
+      payer_fit_score: "numeric (nullable)"
+      clinical_fit_score: "numeric (nullable)"
+      geography_score: "numeric (nullable)"
+      preference_score: "numeric (nullable)"
+      rank_order: "integer"
+      is_recommended: "boolean"
+      explanation_text: "string (nullable)"
+      blockers_json: "jsonb (nullable)"
+      generated_at: "timestamp"
+
+  AuditEvent:
+    fields:
+      id: "uuid"
+      organization_id: "uuid → organizations.id"
+      entity_type: "string"
+      entity_id: "uuid"
+      event_type: "string"
+      old_value_json: "jsonb (nullable)"
+      new_value_json: "jsonb (nullable)"
+      actor_user_id: "uuid (nullable)"
+      created_at: "timestamp"
+
+validation:
+  no_circular_dependencies: true
+  no_orphan_nodes: true
+  no_file_scope_overlaps: true
+
+nodes:
+  core-infrastructure:
+    name: "Core Infrastructure"
+    type: "service"
+    status: "pending"
+    file_scope: "placementops/core/**"
+    depends_on: []
+    connects_to:
+      - auth-module
+      - intake-module
+      - clinical-module
+      - facilities-module
+      - matching-module
+      - outreach-module
+      - outcomes-module
+      - analytics-module
+      - admin-surfaces
+    files: []
+    spec: ".forgeplan/specs/core-infrastructure.md"
+    description: >-
+      Shared foundation: database connection pool, SQLAlchemy base models,
+      Supabase JWT auth middleware, organization_id tenant isolation,
+      audit logging hooks, and case activity event bus.
+    acceptance_criteria:
+      - Database connection pool initializes and health check passes
+      - Supabase JWT Bearer token middleware validates tokens and attaches user+role to request state
+      - organization_id middleware enforces tenant isolation on all requests
+      - AuditEvent records written on every patient_case and outreach_action state change
+      - All 20+ tables created by Alembic migration scripts
+      - pytest covers auth middleware, audit logging, and tenant isolation
+
+  auth-module:
+    name: "Auth Module"
+    type: "service"
+    status: "pending"
+    file_scope: "placementops/modules/auth/**"
+    depends_on:
+      - core-infrastructure
+    connects_to:
+      - core-infrastructure
+      - intake-module
+      - clinical-module
+      - outreach-module
+      - analytics-module
+      - admin-surfaces
+    files: []
+    spec: ".forgeplan/specs/auth-module.md"
+    description: >-
+      User authentication, session management, role assignment, and
+      organization-scoped access control via Supabase Auth.
+    acceptance_criteria:
+      - POST /api/v1/auth/login returns JWT session via Supabase Auth
+      - GET /api/v1/auth/me returns authenticated user with role
+      - POST /api/v1/auth/logout invalidates session
+      - Role-based permission matrix enforced for all 5 roles
+      - organizations, users, roles, user_roles tables seeded with 6 roles
+
+  intake-module:
+    name: "Intake Module"
+    type: "service"
+    status: "pending"
+    file_scope: "placementops/modules/intake/**"
+    depends_on:
+      - core-infrastructure
+      - auth-module
+    connects_to:
+      - core-infrastructure
+      - auth-module
+      - clinical-module
+      - admin-surfaces
+    files: []
+    spec: ".forgeplan/specs/intake-module.md"
+    description: >-
+      Patient case creation, XLSX/CSV spreadsheet import, field validation,
+      duplicate detection, and case state machine through intake stages.
+    acceptance_criteria:
+      - POST /api/v1/cases creates patient case with status=new
+      - GET /api/v1/cases returns paginated list filtered by org and status
+      - PUT /api/v1/cases/{id}/intake-complete validates required fields and advances to intake_complete
+      - POST /api/v1/imports/upload accepts XLSX and CSV and creates import_job
+      - Import processes rows via FastAPI BackgroundTasks
+      - Duplicate detection warns on patient_name+dob+hospital match
+      - intake_field_issues created for validation failures
+      - All state transitions written to case_status_history
+
+  clinical-module:
+    name: "Clinical Module"
+    type: "service"
+    status: "pending"
+    file_scope: "placementops/modules/clinical/**"
+    depends_on:
+      - core-infrastructure
+      - auth-module
+      - intake-module
+    connects_to:
+      - core-infrastructure
+      - auth-module
+      - intake-module
+      - matching-module
+    files: []
+    spec: ".forgeplan/specs/clinical-module.md"
+    description: >-
+      Clinical assessment form with 20+ clinical fields, reviewer assignment,
+      and case transitions from needs_clinical_review to ready_for_matching.
+    acceptance_criteria:
+      - POST /api/v1/cases/{id}/assessments creates clinical_assessment with draft status
+      - PUT /api/v1/cases/{id}/assessments/{aid}/finalize sets review_status=finalized
+      - Finalizing assessment auto-advances case to ready_for_matching
+      - GET /api/v1/cases?status=needs_clinical_review returns reviewer queue
+      - Assessment captures all 20+ clinical fields (trach, vent, dialysis, wound_care, bariatric, isolation, etc.)
+      - Only clinical_reviewer or admin can finalize assessments
+
+  facilities-module:
+    name: "Facilities Module"
+    type: "service"
+    status: "pending"
+    file_scope: "placementops/modules/facilities/**"
+    depends_on:
+      - core-infrastructure
+      - auth-module
+    connects_to:
+      - core-infrastructure
+      - auth-module
+      - matching-module
+      - outreach-module
+      - frontend-app-shell
+    files: []
+    spec: ".forgeplan/specs/facilities-module.md"
+    description: >-
+      Facility directory CRUD including capability matrices, insurance
+      acceptance rules, contact management, and coordinator preference rankings.
+    acceptance_criteria:
+      - GET /api/v1/facilities returns paginated directory filtered by type, state, capability
+      - POST /api/v1/facilities creates facility (admin only)
+      - PUT /api/v1/facilities/{id}/capabilities updates facility_capabilities
+      - POST /api/v1/facilities/{id}/insurance-rules creates facility_insurance_rules
+      - GET /api/v1/facilities/{id} returns full detail with capabilities, contacts, insurance rules
+      - facility_preferences support global, market, and hospital scopes
+      - last_verified_at updated when capabilities or insurance rules are edited
+
+  matching-module:
+    name: "Matching Module"
+    type: "service"
+    status: "pending"
+    file_scope: "placementops/modules/matching/**"
+    depends_on:
+      - core-infrastructure
+      - auth-module
+      - clinical-module
+      - facilities-module
+    connects_to:
+      - core-infrastructure
+      - clinical-module
+      - facilities-module
+      - outreach-module
+    files: []
+    spec: ".forgeplan/specs/matching-module.md"
+    description: >-
+      Weighted rules engine scoring candidate facilities against a patient's
+      clinical assessment, generating ranked facility_matches with
+      human-readable explanations and hard blocker detection.
+    acceptance_criteria:
+      - POST /api/v1/cases/{id}/generate-matches runs scoring engine and stores facility_matches
+      - Scoring weighs payer_fit, clinical_fit, geography, and preference
+      - Hard blockers (payer not accepted, missing capability) exclude facility and set blockers_json
+      - explanation_text is human-readable (e.g. "Accepts Medicare, supports wound care, 4 miles away")
+      - Results ranked by overall_score descending with rank_order
+      - GET /api/v1/cases/{id}/matches returns ranked list
+      - Case advances to facility_options_generated after scoring run
+
+  outreach-module:
+    name: "Outreach Module"
+    type: "service"
+    status: "pending"
+    file_scope: "placementops/modules/outreach/**"
+    depends_on:
+      - core-infrastructure
+      - auth-module
+      - matching-module
+    connects_to:
+      - core-infrastructure
+      - auth-module
+      - matching-module
+      - outcomes-module
+      - admin-surfaces
+    files: []
+    spec: ".forgeplan/specs/outreach-module.md"
+    description: >-
+      Human-in-the-loop outreach: email draft creation from templates,
+      approval gate enforcement, recipient management, delivery tracking.
+      Email delivery stubbed for Phase 1.
+    acceptance_criteria:
+      - POST /api/v1/cases/{id}/outreach creates outreach_action with status=draft
+      - Template substitution fills patient summary, facility name, clinical details
+      - PUT /api/v1/outreach/{id}/submit advances to pending_approval
+      - PUT /api/v1/outreach/{id}/approve sets approved_by_user_id and status=approved (coordinator/admin only)
+      - PUT /api/v1/outreach/{id}/send stubs delivery and sets status=sent (no real send in Phase 1)
+      - Case advances to outreach_in_progress when first outreach approved
+      - Case advances to pending_facility_response when first outreach sent
+      - GET /api/v1/cases/{id}/outreach returns all outreach actions with statuses
+
+  outcomes-module:
+    name: "Outcomes Module"
+    type: "service"
+    status: "pending"
+    file_scope: "placementops/modules/outcomes/**"
+    depends_on:
+      - core-infrastructure
+      - auth-module
+      - outreach-module
+    connects_to:
+      - core-infrastructure
+      - auth-module
+      - outreach-module
+      - analytics-module
+    files: []
+    spec: ".forgeplan/specs/outcomes-module.md"
+    description: >-
+      Placement outcome recording for acceptances, declines with reason codes,
+      manual retry routing, and final case closure.
+    acceptance_criteria:
+      - POST /api/v1/cases/{id}/outcomes records placement_outcome (accepted, declined, placed, withdrawn, family_declined)
+      - Accepted outcome advances case to accepted
+      - POST /api/v1/cases/{id}/place records final facility and advances to placed
+      - All declines require decline_reason_code from seed data
+      - Coordinator can route declined case back to ready_for_matching or outreach_pending_approval
+      - POST /api/v1/cases/{id}/close with reason advances to closed
+      - GET /api/v1/cases/{id}/outcomes returns outcome history
+
+  analytics-module:
+    name: "Analytics Module"
+    type: "service"
+    status: "pending"
+    file_scope: "placementops/modules/analytics/**"
+    depends_on:
+      - core-infrastructure
+      - auth-module
+      - outcomes-module
+    connects_to:
+      - core-infrastructure
+      - outcomes-module
+    files: []
+    spec: ".forgeplan/specs/analytics-module.md"
+    description: >-
+      Manager-facing dashboards and KPI reporting: case volume, cycle time,
+      placement rates, and outreach performance.
+    acceptance_criteria:
+      - GET /api/v1/analytics/dashboard returns case volume by status, avg cycle time, placement rate
+      - GET /api/v1/analytics/outreach-performance returns accept/decline rates by facility
+      - All analytics endpoints restricted to manager or admin role
+      - All queries scoped to organization_id
+      - Configurable date range (default last 30 days)
+
+  admin-surfaces:
+    name: "Admin Surfaces"
+    type: "service"
+    status: "pending"
+    file_scope: "placementops/modules/admin/**"
+    depends_on:
+      - core-infrastructure
+      - auth-module
+      - intake-module
+      - outreach-module
+    connects_to:
+      - core-infrastructure
+      - auth-module
+      - intake-module
+      - outreach-module
+    files: []
+    spec: ".forgeplan/specs/admin-surfaces.md"
+    description: >-
+      Admin-only endpoints for user management, outreach template CRUD,
+      import job monitoring, and organization settings.
+    acceptance_criteria:
+      - GET/POST/PUT/DELETE /api/v1/admin/users — user management (admin only)
+      - GET/POST/PUT/DELETE /api/v1/admin/templates — template management (admin only)
+      - GET /api/v1/admin/import-jobs — list import jobs with status and row counts
+      - GET /api/v1/admin/import-jobs/{id}/results — per-row results and errors
+      - GET/PUT /api/v1/admin/organization — org settings
+      - All endpoints return 403 for non-admin roles
+
+  frontend-app-shell:
+    name: "Frontend App Shell"
+    type: "frontend"
+    status: "pending"
+    file_scope: "frontend/**"
+    depends_on:
+      - auth-module
+      - intake-module
+      - clinical-module
+      - facilities-module
+      - matching-module
+      - outreach-module
+      - outcomes-module
+      - analytics-module
+      - admin-surfaces
+    connects_to:
+      - auth-module
+      - intake-module
+      - clinical-module
+      - facilities-module
+      - matching-module
+      - outreach-module
+      - outcomes-module
+      - analytics-module
+      - admin-surfaces
+    files: []
+    spec: ".forgeplan/specs/frontend-app-shell.md"
+    description: >-
+      Next.js application with all 16 wireframed screens, Supabase Auth
+      session management, role-based route protection, shared layout
+      (shadcn/ui + Tailwind), and typed API client.
+    acceptance_criteria:
+      - Login screen authenticates via Supabase Auth and stores session
+      - Role-based navigation shows only permitted screens per user role
+      - Intake Workbench lists cases with status filters and case creation form
+      - Operations Queue shows cross-module active case list filterable by status
+      - Case Detail shows full case timeline, current status, and available actions
+      - Clinical Assessment form submits all 20+ clinical fields
+      - Facility Match Results shows ranked matches with score explanations
+      - Outreach Draft editor creates, edits, submits, and approves outreach actions
+      - Facility Directory with search and filter; Facility Detail and Capabilities editor
+      - Manager Dashboard renders KPI cards from analytics API
+      - All 4 Admin screens (Users, Templates, Import Jobs, Org Settings) functional
+      - npm run dev starts dev server with no errors
+      - All API calls use typed client and handle loading/error states

@@ -1,0 +1,10 @@
+# ForgePlan — Ephemeral state (do not commit)
+.forgeplan/state.json
+
+node_modules/
+dist/
+.env
+.env.*
+__pycache__/
+*.pyc
+.venv/
