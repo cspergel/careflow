@@ -1,0 +1,139 @@
+node: "clinical-module"
+name: "Clinical Module"
+spec_type: "prescriptive"
+description: >
+  Provides the full lifecycle for structured clinical assessments tied to a
+  patient case. Handles reviewer assignment (advancing case to
+  under_clinical_review), creation and editing of ClinicalAssessment drafts
+  with 20+ clinical fields, assessment versioning without destructive
+  overwrites, backward transitions with a required reason, and finalization
+  (advancing case to ready_for_matching). Clinical field names must exactly
+  match FacilityCapabilities field names so the matching engine can execute
+  hard-exclusion logic without a translation layer. Only clinical_reviewer or
+  admin roles may create or finalize assessments.
+
+inputs:
+  - name: "case_id"
+    type: "uuid"
+    required: true
+    validation: "Must reference an existing PatientCase with current_status in [needs_clinical_review, under_clinical_review]; closed cases return 409"
+  - name: "assessment_payload"
+    type: "$shared.ClinicalAssessment"
+    required: true
+    validation: "recommended_level_of_care required at finalization; dialysis_type enum must be hd|peritoneal|none; all boolean fields default false when absent"
+  - name: "reviewer_user_id"
+    type: "uuid"
+    required: true
+    validation: "Must reference a User with role_key=clinical_reviewer or admin; enforced by auth-module JWT middleware"
+  - name: "transition_reason"
+    type: "string"
+    required: false
+    validation: "Required when executing backward transition under_clinical_review→needs_clinical_review; max 1000 characters"
+
+outputs:
+  - name: "assessment"
+    type: "$shared.ClinicalAssessment"
+  - name: "case_status"
+    type: "string"
+  - name: "assessment_version_list"
+    type: "list[$shared.ClinicalAssessment]"
+  - name: "audit_event"
+    type: "$shared.AuditEvent"
+
+shared_dependencies:
+  - ClinicalAssessment
+  - PatientCase
+  - User
+  - AuditEvent
+
+data_models:
+  AssessmentVersionEntry:
+    id: uuid
+    patient_case_id: uuid
+    reviewer_user_id: uuid
+    review_status: "string — enum: draft | finalized"
+    version_sequence: integer
+    created_at: timestamp
+
+interfaces:
+  - target_node: "core-infrastructure"
+    type: "outbound"
+    contract: "Provides ClinicalAssessment, PatientCase ORM models, transition_case_status handler, publish_case_activity_event, AsyncSessionLocal, and get_auth_context"
+  - target_node: "auth-module"
+    type: "outbound"
+    contract: "Exports require_role Depends(); clinical-module imports to restrict assessment creation and finalization to clinical_reviewer and admin"
+  - target_node: "intake-module"
+    type: "outbound"
+    contract: "auto-advances case to needs_clinical_review after mark-intake-complete; clinical-module reads PatientCase status to gate reviewer assignment"
+  - target_node: "matching-module"
+    type: "outbound"
+    contract: "Exposes latest finalized ClinicalAssessment (by created_at desc, review_status=finalized) for the case; matching-module reads this to build the hard-exclusion set and scoring inputs"
+
+acceptance_criteria:
+  - id: AC1
+    description: "GET /api/v1/cases?status=needs_clinical_review returns the clinical reviewer queue scoped to the authenticated user's organization"
+    test: "Authenticate as clinical_reviewer; seed cases across two orgs at needs_clinical_review; assert response contains only the org-scoped cases with correct status"
+  - id: AC2
+    description: "POST /api/v1/cases/{case_id}/assign with role=clinical_reviewer assigns reviewer and advances case to under_clinical_review"
+    test: "POST assign with valid clinical_reviewer user_id; assert PatientCase.current_status=under_clinical_review, case_status_history row written, case_activity_events published with old_status=needs_clinical_review"
+  - id: AC3
+    description: "POST /api/v1/cases/{case_id}/assessments creates a ClinicalAssessment with review_status=draft"
+    test: "POST with valid payload; assert response review_status=draft, patient_case_id matches, reviewer_user_id matches calling user; assert no PatientCase status change occurs at draft creation"
+  - id: AC4
+    description: "PATCH /api/v1/assessments/{assessment_id} updates draft assessment fields without overwriting earlier versions"
+    test: "Create draft assessment; PATCH three times with different field values; assert all three versions exist in DB with ascending created_at; assert PATCH returns the updated draft, not a new finalized record"
+  - id: AC5
+    description: "GET /api/v1/cases/{case_id}/assessments returns all assessment versions for the case ordered by created_at"
+    test: "Create two draft assessments and one finalized assessment for same case; GET assessments; assert all three returned, ordered chronologically, with correct review_status on each"
+  - id: AC6
+    description: "Finalizing an assessment validates recommended_level_of_care is present and advances case to ready_for_matching"
+    test: "PATCH assessment with review_status=finalized and recommended_level_of_care=snf; assert PatientCase.current_status=ready_for_matching, AuditEvent written with event_type=assessment_finalized, case_status_history row created"
+  - id: AC7
+    description: "Finalizing an assessment without recommended_level_of_care returns 422"
+    test: "PATCH assessment with review_status=finalized but omit recommended_level_of_care; assert HTTP 422 with field-level error; assert PatientCase status unchanged"
+  - id: AC8
+    description: "All 20+ clinical fields are captured and stored without loss"
+    test: "POST assessment with all fields populated: trach, vent, dialysis_required, dialysis_type, in_house_hd_required, wound_vac_needs, iv_antibiotics, tpn, isolation_precautions, psych_behavior_flags, bariatric_needs, oxygen_required, memory_care_needed, behavioral_complexity_flag, rehab_tolerance, mobility_status, special_equipment_needs, barriers_to_placement, payer_notes, family_preference_notes, confidence_level, clinical_summary; GET assessment and assert all fields round-trip correctly"
+  - id: AC9
+    description: "Backward transition under_clinical_review→needs_clinical_review is permitted for clinical_reviewer and admin with transition_reason required"
+    test: "Advance case to under_clinical_review; POST status-transition with transition=needs_clinical_review; assert 400 when transition_reason absent; assert 200 with reason present; assert case_status_history and AuditEvent written"
+  - id: AC10
+    description: "intake_staff and placement_coordinator roles cannot create or finalize assessments"
+    test: "Attempt POST /assessments as intake_staff; assert HTTP 403; attempt PATCH assessment review_status=finalized as placement_coordinator; assert HTTP 403"
+  - id: AC11
+    description: "Multiple assessment versions are preserved; only the latest finalized assessment is surfaced to the matching engine"
+    test: "Create two finalized assessments for same case (different timestamps); query the assessment exposed to matching-module; assert it is the one with the later generated_at"
+  - id: AC12
+    description: "Closed cases reject all assessment write operations with 409"
+    test: "Close a case via manager role; attempt POST /assessments and PATCH /assessments/{id}; assert both return 409"
+
+constraints:
+  - "Assessment records are append-only. PATCH creates a new version row; the previous row must remain in the database unmodified."
+  - "Only clinical_reviewer or admin role may call POST /cases/{case_id}/assessments or set review_status=finalized."
+  - "The backward transition under_clinical_review→needs_clinical_review must always require a non-empty transition_reason string; the transition allowlist in core-infrastructure enforces role but clinical-module enforces the reason requirement."
+  - "ClinicalAssessment field names must not be renamed or aliased; they must exactly match FacilityCapabilities field names as documented in the shared model (e.g. wound_vac_needs, oxygen_required, memory_care_needed, behavioral_complexity_flag, isolation_precautions, bariatric_needs, iv_antibiotics, tpn)."
+  - "All PatientCase status transitions must be delegated to core-infrastructure's shared status-transition handler; clinical-module must not mutate current_status directly."
+  - "AuditEvent must be written as an insert-only operation; no updates or deletes to AuditEvent records."
+  - "organization_id tenant isolation must be enforced on every read and write; a clinical_reviewer must not access assessments from another organization."
+
+non_goals:
+  - "This module does not perform facility matching or scoring. Scoring logic lives entirely in matching-module."
+  - "This module does not send outreach communications. Outreach is owned by outreach-module."
+  - "This module does not provide analytics aggregations or reporting. Analytics is owned by analytics-module."
+  - "This module does not manage facility records or capability matrices. Facility data is owned by facilities-module."
+
+failure_modes:
+  - "A PATCH to a finalized assessment could overwrite clinical fields in place, silently destroying version history and causing the matching engine to use stale data."
+  - "The backward transition handler omits writing a case_status_history row, causing timeline gaps that violate HIPAA audit requirements."
+  - "recommended_level_of_care validation is skipped server-side (only enforced client-side), allowing a finalized assessment with a null level of care to propagate to the matching engine."
+  - "ClinicalAssessment field names are aliased or renamed during serialization (e.g. oxygen_required→requires_oxygen), causing the matching engine's hard-exclusion field mapping to silently miss required capability checks."
+  - "The latest-finalized-assessment query uses created_at instead of updated_at, returning an older version when two assessments share a close timestamp."
+  - "Role check for assessment finalization compares against a hardcoded string literal instead of the role_key enum value, passing when role_key='Clinical_Reviewer' (wrong casing) is supplied."
+  - "Tenant isolation query omits the organization_id filter on assessment reads, allowing a clinical_reviewer at org A to read assessments belonging to org B cases with known UUIDs."
+
+file_scope: "placementops/modules/clinical/**"
+
+depends_on:
+  - "core-infrastructure"
+  - "auth-module"
+  - "intake-module"

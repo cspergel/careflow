@@ -1,0 +1,32 @@
+{
+  "node_id": "clinical-module",
+  "status": "reviewed",
+  "node_type": "service",
+  "file_count": 13,
+  "test_file_count": 0,
+  "dependency_count": 3,
+  "connection_count": 4,
+  "entrypoints": [],
+  "hotspot_files": [],
+  "recent_findings": [],
+  "decision_ids": [],
+  "constraints": [
+    "Assessment records are append-only. PATCH creates a new version row; the previous row must remain in the database unmodified.",
+    "Only clinical_reviewer or admin role may call POST /cases/{case_id}/assessments or set review_status=finalized.",
+    "The backward transition under_clinical_review→needs_clinical_review must always require a non-empty transition_reason string; the transition allowlist in core-infrastructure enforces role but clinical-module enforces the reason requirement.",
+    "ClinicalAssessment field names must not be renamed or aliased; they must exactly match FacilityCapabilities field names as documented in the shared model (e.g. wound_vac_needs, oxygen_required, memory_care_needed, behavioral_complexity_flag, isolation_precautions, bariatric_needs, iv_antibiotics, tpn).",
+    "All PatientCase status transitions must be delegated to core-infrastructure's shared status-transition handler; clinical-module must not mutate current_status directly.",
+    "AuditEvent must be written as an insert-only operation; no updates or deletes to AuditEvent records.",
+    "organization_id tenant isolation must be enforced on every read and write; a clinical_reviewer must not access assessments from another organization."
+  ],
+  "shared_models": [],
+  "cross_refs": [
+    "Depends on: core-infrastructure",
+    "Depends on: auth-module",
+    "Depends on: intake-module",
+    "Connected to: core-infrastructure",
+    "Connected to: auth-module",
+    "Connected to: intake-module",
+    "Connected to: matching-module"
+  ]
+}

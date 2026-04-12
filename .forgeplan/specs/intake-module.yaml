@@ -1,0 +1,194 @@
+node: "intake-module"
+name: "Intake Module"
+spec_type: "prescriptive"
+description: >
+  Patient case creation and daily census management for offshore intake staff.
+  Handles case CRUD with role-gated field access, multipart XLSX/CSV file upload
+  (10 MB max, content-type validation, ZIP bomb protection), ImportJob lifecycle
+  (upload → map → validate → commit), FastAPI BackgroundTasks for background
+  processing, duplicate detection on patient_name+dob+hospital_id, intake_field_issues
+  tracking, and case state-machine transitions through intake stages. File bytes are
+  read eagerly in the endpoint and passed to the background task because UploadFile
+  is not safe to access after the request ends. Background tasks open a fresh
+  AsyncSessionLocal; they never reuse the request session. All import state is
+  persisted in the ImportJob table from the moment of upload.
+inputs:
+  - name: "case_payload"
+    type: "CaseCreateRequest"
+    required: true
+    validation: "patient_name required; hospital_id must be a valid UUID referencing hospital_reference"
+  - name: "case_patch_payload"
+    type: "CasePatchRequest"
+    required: false
+    validation: "at least one editable field present; role-specific field allowlist enforced"
+  - name: "import_file"
+    type: "bytes"
+    required: true
+    validation: "max 10 MB (413 if exceeded); content-type must be application/vnd.openxmlformats-officedocument.spreadsheetml.sheet or text/csv; ZIP bomb check applied before parsing"
+  - name: "column_mapping"
+    type: "ColumnMappingRequest"
+    required: true
+    validation: "all mandatory destination fields must be covered by the mapping"
+  - name: "auth_user"
+    type: "$shared.User"
+    required: true
+    validation: "role_key in [admin, intake_staff] for case creation and mark-intake-complete; authenticated for read endpoints"
+outputs:
+  - name: "patient_case"
+    type: "$shared.PatientCase"
+  - name: "import_job"
+    type: "$shared.ImportJob"
+  - name: "intake_queue"
+    type: "IntakeQueueResponse"
+  - name: "audit_event"
+    type: "$shared.AuditEvent"
+shared_dependencies:
+  - PatientCase
+  - User
+  - ImportJob
+  - AuditEvent
+data_models:
+  CaseCreateRequest:
+    patient_name: "string — required"
+    hospital_id: "uuid — required"
+    dob: "date — nullable"
+    mrn: "string — nullable"
+    hospital_unit: "string — nullable"
+    room_number: "string — nullable"
+    admission_date: "date — nullable"
+    primary_diagnosis_text: "string — nullable"
+    insurance_primary: "string — nullable"
+    insurance_secondary: "string — nullable"
+    patient_zip: "string — nullable"
+    preferred_geography_text: "string — nullable"
+    discharge_target_date: "date — nullable"
+    priority_level: "string — enum: routine | urgent | emergent — nullable"
+  CasePatchRequest:
+    hospital_unit: "string — nullable"
+    room_number: "string — nullable"
+    admission_date: "date — nullable"
+    primary_diagnosis_text: "string — nullable"
+    insurance_primary: "string — nullable"
+    insurance_secondary: "string — nullable"
+    patient_zip: "string — nullable"
+    preferred_geography_text: "string — nullable"
+    discharge_target_date: "date — nullable"
+    priority_level: "string — nullable"
+    assigned_coordinator_user_id: "uuid — nullable"
+  ColumnMappingRequest:
+    mappings: "list of {source_column: string, destination_field: string}"
+  IntakeFieldIssue:
+    id: "uuid"
+    patient_case_id: "uuid"
+    field_name: "string"
+    issue_description: "string"
+    resolved_flag: "boolean — default false"
+    created_at: "timestamp"
+  IntakeQueueResponse:
+    cases: "list of PatientCase summaries"
+    total: "integer"
+    page: "integer"
+    page_size: "integer"
+  DuplicateWarning:
+    existing_case_id: "uuid"
+    patient_name: "string"
+    dob: "date — nullable"
+    hospital_id: "uuid"
+    current_status: "string"
+interfaces:
+  - target_node: "core-infrastructure"
+    type: "outbound"
+    contract: "Provides PatientCase, ImportJob ORM models, transition_case_status handler, publish_case_activity_event, AsyncSessionLocal, and get_auth_context"
+  - target_node: "auth-module"
+    type: "outbound"
+    contract: "Exports require_role and require_write_permission Depends() callables; intake-module imports these to gate intake_staff and admin access to case creation and intake-complete endpoints"
+  - target_node: "clinical-module"
+    type: "outbound"
+    contract: "auto-advances case to needs_clinical_review after mark-intake-complete; clinical-module reads PatientCase status to gate reviewer assignment"
+  - target_node: "admin-surfaces"
+    type: "outbound"
+    contract: "admin-surfaces reads ImportJob records for monitoring; intake-module is the sole writer"
+acceptance_criteria:
+  - id: AC1
+    description: "POST /api/v1/cases creates a PatientCase with current_status=new and immediately auto-advances to intake_in_progress on first save; writes case_status_history and case_activity_events"
+    test: "pytest: POST /cases with valid payload → assert response.status=201, body.current_status==intake_in_progress, case_status_history has two rows (new→intake_in_progress), case_activity_events has entry with event_type=status_changed"
+  - id: AC2
+    description: "GET /api/v1/cases returns paginated list filterable by status, hospital_id, assigned_user_id, priority_level, and free-text search"
+    test: "pytest: seed 5 cases across two statuses; GET /cases?status=intake_in_progress → assert only matching cases returned; GET /cases?search=Smith → assert name-match filtering works; assert pagination fields (total, page, page_size) present"
+  - id: AC3
+    description: "GET /api/v1/cases/{case_id} returns full case detail including all intake_field_issues for that case"
+    test: "pytest: seed one case with two intake_field_issues; GET /cases/{id} → assert intake_field_issues list length == 2 and resolved_flag values are correct"
+  - id: AC4
+    description: "PATCH /api/v1/cases/{case_id} enforces role-based field allowlists: intake_staff may update intake fields only; placement_coordinator may update priority and assignment fields; clinical fields require clinical_reviewer role"
+    test: "pytest: as intake_staff, PATCH with primary_diagnosis_text=new → assert 200; PATCH with assigned_coordinator_user_id=X → assert 403; as placement_coordinator, PATCH with priority_level=urgent → assert 200; assert updated_by_user_id set correctly"
+  - id: AC5
+    description: "POST /api/v1/cases/{case_id}/mark-intake-complete validates required fields, advances case to intake_complete then auto-advances to needs_clinical_review, and writes case_status_history"
+    test: "pytest: case in intake_in_progress with all required fields → POST mark-intake-complete → assert 200, final status==needs_clinical_review, case_status_history has transitions intake_in_progress→intake_complete and intake_complete→needs_clinical_review; missing required field → assert 422"
+  - id: AC6
+    description: "POST /api/v1/cases/{case_id}/assign records assignment and sets assigned_coordinator_user_id on PatientCase when role is placement_coordinator"
+    test: "pytest: POST /cases/{id}/assign with user_id of a placement_coordinator → assert case_assignments record created, PatientCase.assigned_coordinator_user_id updated; assign a clinical_reviewer → assert case_assignments created, assigned_coordinator_user_id unchanged"
+  - id: AC7
+    description: "POST /api/v1/cases/{case_id}/status-transition delegates to core-infrastructure shared handler; invalid transitions return 400 with allowed transitions list; role not in permitted_roles returns 403"
+    test: "pytest: attempt transition from intake_in_progress to placed (invalid) → assert 400 with allowed_transitions in body; attempt valid transition as role not in permitted_roles → assert 403"
+  - id: AC8
+    description: "POST /api/v1/imports accepts multipart XLSX or CSV, enforces 10 MB limit, validates content-type, rejects malformed files and ZIP bomb attempts, and creates ImportJob with status=uploaded"
+    test: "pytest: upload valid XLSX under 10 MB → assert 201, ImportJob.status==uploaded; upload 11 MB file → assert 413; upload text/plain content-type → assert 415; upload crafted ZIP bomb payload → assert 400 before any DB write"
+  - id: AC9
+    description: "POST /api/v1/imports/{id}/map-columns saves column_mapping_json and advances ImportJob to status=mapping"
+    test: "pytest: POST /imports/{id}/map-columns with valid mapping → assert 200, ImportJob.status==mapping, column_mapping_json stored correctly"
+  - id: AC10
+    description: "POST /api/v1/imports/{id}/validate dry-runs all rows using openpyxl read_only=True in a thread executor, returns per-row validation results, and advances ImportJob to ready"
+    test: "pytest: upload XLSX with 3 valid rows and 1 invalid row → POST validate → assert response contains per-row results, invalid row has error detail, ImportJob.status==ready"
+  - id: AC11
+    description: "POST /api/v1/imports/{id}/commit triggers BackgroundTask that opens a fresh AsyncSessionLocal, reads file bytes (already stored), creates/updates cases, updates ImportJob progress every 50 rows, and stores per-row errors in error_detail_json"
+    test: "pytest with anyio: POST commit → assert 202, ImportJob.status==committing immediately; wait for background task completion → assert ImportJob.status==complete, created_count+updated_count+failed_count == total_rows, error_detail_json populated for failed rows"
+  - id: AC12
+    description: "GET /api/v1/imports/{id} returns ImportJob status with current row counts (created, updated, failed)"
+    test: "pytest: GET /imports/{id} mid-commit → assert status, created_count, updated_count, failed_count fields present; GET after completion → assert status==complete"
+  - id: AC13
+    description: "GET /api/v1/queues/intake returns the intake queue for offshore intake staff"
+    test: "pytest: seed 3 cases in intake_in_progress; GET /queues/intake as intake_staff → assert 200, all 3 cases returned in response"
+  - id: AC14
+    description: "Duplicate detection returns a DuplicateWarning when patient_name+dob+hospital_id match an existing active case"
+    test: "pytest: create case with patient_name=John Doe, dob=1950-01-01, hospital_id=X; POST /cases with identical fields → assert response contains duplicate_warning with existing_case_id"
+  - id: AC15
+    description: "intake_field_issues are created for validation failures; resolved_flag is cleared when the field is re-submitted with a valid value"
+    test: "pytest: submit case with invalid field → assert IntakeFieldIssue created with resolved_flag=false; re-submit with valid value → assert resolved_flag=true"
+  - id: AC16
+    description: "Only intake_staff and admin can create cases or invoke mark-intake-complete; all other roles receive 403"
+    test: "pytest: POST /cases as clinical_reviewer → assert 403; POST /cases as admin → assert 201; POST mark-intake-complete as placement_coordinator → assert 403"
+constraints:
+  - "File bytes MUST be read eagerly in the upload endpoint and passed to the BackgroundTask as bytes; UploadFile must never be accessed inside the background task after the request lifecycle ends."
+  - "BackgroundTask MUST open a fresh AsyncSessionLocal; it MUST NOT receive or reuse the request-scoped database session."
+  - "ImportJob record MUST be written to the database before the endpoint returns; no import state is kept in in-memory dicts."
+  - "openpyxl MUST be used with read_only=True for parsing large files; parsing MUST be run in loop.run_in_executor to avoid blocking the event loop."
+  - "Import progress MUST be persisted to ImportJob every 50 rows; per-row progress writes are forbidden."
+  - "Database connection MUST use NullPool and statement_cache_size=0 for Supabase compatibility."
+  - "Maximum upload size is 10 MB; the endpoint MUST reject oversized files with HTTP 413 before reading the full body."
+  - "Content-type validation is mandatory on upload; only application/vnd.openxmlformats-officedocument.spreadsheetml.sheet and text/csv are accepted."
+  - "ZIP bomb / decompression bomb detection MUST occur before any spreadsheet parsing begins."
+  - "Role-based field allowlists on PATCH MUST be enforced server-side; the client-supplied field list is never trusted."
+  - "Case creation and mark-intake-complete are restricted to intake_staff and admin; the middleware MUST enforce this before the handler executes."
+  - "All PatientCase writes MUST include updated_by_user_id from the authenticated user."
+non_goals:
+  - "This node does not perform clinical assessment or manage clinical fields on PatientCase."
+  - "This node does not run the facility matching engine or produce FacilityMatch records."
+  - "This node does not manage outreach actions or templates."
+  - "This node does not implement real email delivery; outreach is owned by outreach-module."
+  - "This node does not expose admin user management surfaces."
+  - "This node does not implement Phase 2 voice / AI call features."
+  - "This node does not implement retry logic for failed ImportJob background tasks; failed jobs remain in failed state for admin review."
+failure_modes:
+  - "Background task accesses UploadFile after request ends, causing 'file closed' error and a silently failed import with ImportJob stuck in committing status."
+  - "Background task reuses the request session, which is already closed by the time the task runs, causing SQLAlchemy DetachedInstanceError on every DB write."
+  - "Import progress is written per-row instead of every 50 rows, causing severe DB write amplification and timeout on large files."
+  - "openpyxl loads entire workbook into memory without read_only=True, triggering OOM on files near the 10 MB limit."
+  - "ZIP bomb check is skipped or occurs after openpyxl open(), allowing a crafted file to exhaust memory before rejection."
+  - "Content-type is read from the client-supplied Content-Type header without server-side verification, allowing arbitrary file types to be processed."
+  - "Duplicate detection query is missing an index on (organization_id, patient_name, dob, hospital_id), causing full-table scan as case volume grows."
+  - "mark-intake-complete does not write both transitions to case_status_history, causing the intake_complete state to be invisible in audit history."
+  - "PATCH endpoint applies requested fields without checking role allowlist, allowing intake_staff to overwrite coordinator or clinical fields."
+file_scope: "placementops/modules/intake/**"
+depends_on:
+  - "core-infrastructure"
+  - "auth-module"

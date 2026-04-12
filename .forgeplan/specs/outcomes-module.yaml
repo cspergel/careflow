@@ -1,0 +1,185 @@
+node: "outcomes-module"
+name: "Outcomes Module"
+spec_type: "prescriptive"
+description: >
+  Placement outcome recording and case state machine advancement for all
+  outcome types: accepted, declined, placed, family_declined, and withdrawn.
+  All outcomes write a PlacementOutcome row, a case_activity_event, and an
+  AuditEvent (all outcome types audited for HIPAA compliance, not just
+  declines). Access is restricted to placement_coordinator and admin roles.
+
+  Accepted outcome: validates that at least one OutreachAction with
+  approval_status=sent exists for the given facility_id on the same case;
+  advances case to accepted.
+
+  Declined outcome: requires a decline_reason_code from the
+  decline_reason_reference seed table (codes include bed_no_longer_available,
+  insurance_issue_post_acceptance, clinical_criteria_not_met, no_response);
+  facility_id is required and must reference a facility with a sent outreach
+  action for the case; advances case to declined_retry_needed. A rescinded
+  acceptance (accepted→declined_retry_needed) follows the same path.
+
+  family_declined and withdrawn outcomes: facility_id may be null;
+  advance case to closed (manager or admin must confirm via status-transition).
+
+  Auto-cancel: when case advances to accepted or placed, all OutreachAction
+  records in draft/pending_approval/approved states for that case are
+  atomically set to canceled; sent actions remain as permanent records.
+
+  Retry routing: coordinator posts a status-transition from
+  declined_retry_needed back to ready_for_matching or
+  outreach_pending_approval, enforced by the shared transition allowlist
+  handler.
+
+  Case timeline: GET /api/v1/cases/{case_id}/timeline returns a
+  chronological feed of case_activity_events. Outcome history: GET
+  /api/v1/cases/{case_id}/outcomes returns all PlacementOutcome records.
+
+inputs:
+  - name: "case_id"
+    type: "uuid"
+    required: true
+    validation: "Must reference an existing PatientCase; case must not be closed"
+  - name: "outcome_payload"
+    type: "PlacementOutcomeCreate"
+    required: true
+    validation: "outcome_type required and must be in enum [accepted, declined, placed, family_declined, withdrawn]; facility_id required for accepted, declined, and placed; facility_id nullable for family_declined and withdrawn; decline_reason_code required when outcome_type=declined"
+  - name: "actor_user"
+    type: "$shared.User"
+    required: true
+    validation: "Must have role_key in [placement_coordinator, admin]; all other roles receive 403"
+
+outputs:
+  - name: "placement_outcome"
+    type: "$shared.PlacementOutcome"
+  - name: "updated_case"
+    type: "$shared.PatientCase"
+  - name: "audit_event"
+    type: "$shared.AuditEvent"
+  - name: "case_activity_event"
+    type: "CaseActivityEvent"
+  - name: "canceled_outreach_actions"
+    type: "list[uuid]"
+
+shared_dependencies:
+  - PlacementOutcome
+  - PatientCase
+  - OutreachAction
+  - User
+  - AuditEvent
+
+data_models:
+  PlacementOutcomeCreate:
+    patient_case_id: uuid
+    outcome_type: "string — enum: accepted | declined | placed | family_declined | withdrawn"
+    facility_id: "uuid — nullable; required for accepted/declined/placed; nullable for family_declined/withdrawn"
+    decline_reason_code: "string — nullable; required when outcome_type=declined; must match decline_reason_reference.code"
+    decline_reason_text: "string — nullable"
+  CaseActivityEvent:
+    case_id: uuid
+    actor_user_id: "uuid — nullable"
+    event_type: string
+    old_status: "string — nullable"
+    new_status: "string — nullable"
+    occurred_at: timestamp
+  OutcomeHistory:
+    items: "list[PlacementOutcome]"
+    total: integer
+  CaseTimeline:
+    events: "list[CaseActivityEvent]"
+    total: integer
+
+interfaces:
+  - target_node: "core-infrastructure"
+    type: "outbound"
+    contract: "Provides PlacementOutcome, PatientCase ORM models, transition_case_status, AsyncSessionLocal, and get_auth_context"
+  - target_node: "auth-module"
+    type: "outbound"
+    contract: "Exports require_role Depends(); outcomes-module imports to restrict outcome recording to placement_coordinator and admin"
+  - target_node: "outreach-module"
+    type: "read"
+    contract: "Reads OutreachAction records to validate that a sent outreach exists for the claimed facility_id before accepting accepted or declined outcomes; also reads all draft/pending_approval/approved outreach actions to auto-cancel on acceptance or placement"
+
+acceptance_criteria:
+  - id: AC1
+    description: "Role gate: only placement_coordinator and admin may record outcomes"
+    test: "POST /api/v1/cases/{case_id}/outcomes by intake_staff, clinical_reviewer, manager, or read_only returns 403; same request by placement_coordinator or admin returns 201"
+  - id: AC2
+    description: "Accepted outcome validates sent outreach for facility"
+    test: "POST outcomes with outcome_type=accepted and facility_id referencing a facility that has at least one OutreachAction.approval_status=sent for the case returns 201 and advances case to accepted; same request with facility_id having no sent outreach returns 400 with descriptive error"
+  - id: AC3
+    description: "Accepted outcome advances case and writes records"
+    test: "After successful accepted outcome: PlacementOutcome row written with outcome_type=accepted and correct facility_id; case.current_status=accepted; AuditEvent written with entity_type=patient_case; case_activity_event written with event_type=outcome_recorded and new_status=accepted"
+  - id: AC4
+    description: "Declined outcome requires facility_id with sent outreach and valid reason code"
+    test: "POST outcomes with outcome_type=declined and facility_id with no sent outreach returns 400; POST with facility_id=null returns 400; POST with decline_reason_code not in decline_reason_reference seed returns 400; POST with valid facility_id, valid code, and optional decline_reason_text returns 201 with case advancing to declined_retry_needed"
+  - id: AC5
+    description: "Declined outcome advances case to declined_retry_needed and audits"
+    test: "After successful declined outcome: case.current_status=declined_retry_needed; PlacementOutcome row written with decline_reason_code and decline_reason_text; AuditEvent and case_activity_event written; retry routing available via status-transition endpoint"
+  - id: AC6
+    description: "Rescinded acceptance routes through declined outcome to declined_retry_needed"
+    test: "When case.current_status=accepted, POST outcomes with outcome_type=declined (facility_id required, reason code required) returns 201 and advances case accepted→declined_retry_needed; this transition is permitted in the state machine allowlist for placement_coordinator and admin"
+  - id: AC7
+    description: "family_declined and withdrawn permit null facility_id and advance to closed"
+    test: "POST outcomes with outcome_type=family_declined and facility_id=null returns 201; case.current_status advances to closed; manager or admin must confirm via POST /api/v1/cases/{case_id}/status-transition to closed with closure_reason; withdrawal follows the same path"
+  - id: AC8
+    description: "Auto-cancel of outstanding outreach on acceptance or placement"
+    test: "When case advances to accepted or placed: all OutreachAction records for the case in draft/pending_approval/approved states are atomically set to approval_status=canceled; OutreachAction records with approval_status=sent are not modified; verify atomicity by checking no partial-cancel state exists after operation"
+  - id: AC9
+    description: "Retry routing from declined_retry_needed"
+    test: "POST /api/v1/cases/{case_id}/status-transition with to_status=ready_for_matching from declined_retry_needed by placement_coordinator returns 200 and advances case; POST with to_status=outreach_pending_approval from declined_retry_needed by placement_coordinator returns 200; transition_reason text required; admin role also permitted; intake_staff attempt returns 403"
+  - id: AC10
+    description: "Placed outcome records final facility and advances case"
+    test: "POST outcomes with outcome_type=placed and valid facility_id returns 201; case.current_status=placed; PlacementOutcome row written; AuditEvent and case_activity_event written; auto-cancel of outstanding outreach triggered"
+  - id: AC11
+    description: "Case closure requires closure_reason and manager or admin role"
+    test: "POST /api/v1/cases/{case_id}/status-transition to closed without closure_reason returns 400; POST by placement_coordinator returns 403; POST by manager with closure_reason returns 200 and case.current_status=closed"
+  - id: AC12
+    description: "Timeline endpoint returns chronological case_activity_events"
+    test: "GET /api/v1/cases/{case_id}/timeline returns events in ascending occurred_at order; each event has actor_user_id, event_type, old_status, new_status, occurred_at; events from all modules (intake, clinical, outreach, outcomes) are included"
+  - id: AC13
+    description: "Outcome history returns all PlacementOutcome records for case"
+    test: "GET /api/v1/cases/{case_id}/outcomes returns all PlacementOutcome rows for the case in creation order; includes all outcome_types; scoped to organization_id"
+  - id: AC14
+    description: "All outcome types produce AuditEvent (HIPAA compliance)"
+    test: "After recording each outcome_type (accepted, declined, placed, family_declined, withdrawn), query audit_events where entity_type=patient_case and entity_id=case_id; exactly one AuditEvent per outcome present; all five outcome types generate audit records"
+  - id: AC15
+    description: "Closed-case mutation rejected"
+    test: "POST /api/v1/cases/{case_id}/outcomes on a closed case returns 409 before the handler executes; enforced by core-infrastructure shared middleware"
+  - id: AC16
+    description: "Decline reason seed codes present"
+    test: "decline_reason_reference table contains at minimum: bed_no_longer_available, insurance_issue_post_acceptance, clinical_criteria_not_met, no_response; POST declined outcome with any of these codes returns 201; POST with unlisted code returns 400"
+
+constraints:
+  - "All outcomes MUST write an AuditEvent regardless of outcome_type; auditing is not limited to declines"
+  - "facility_id MUST be validated against OutreachAction.approval_status=sent for the same case before recording accepted or declined outcomes; returning 400 without this check creates a data integrity gap"
+  - "facility_id MUST be null-permitted for family_declined and withdrawn outcome_types; the validation rule for required vs nullable facility_id MUST be outcome_type-conditional"
+  - "Auto-cancel of outstanding outreach actions MUST execute in the same database transaction as the case status advance to accepted or placed; partial cancellation is not acceptable"
+  - "sent OutreachAction records MUST NOT be canceled by the auto-cancel logic; only draft/pending_approval/approved states are eligible"
+  - "Retry routing (declined_retry_needed → ready_for_matching or outreach_pending_approval) MUST be delegated to the core-infrastructure shared state-machine handler; this module MUST NOT write PatientCase.current_status directly"
+  - "Case closure (status-transition to closed) MUST require closure_reason text and MUST be restricted to manager or admin role"
+  - "organization_id scoping MUST be applied to all queries; cross-tenant data MUST never be returned"
+  - "decline_reason_code MUST be validated against the decline_reason_reference seed table; free-text codes are not permitted"
+
+non_goals:
+  - "This module does not implement the matching or outreach approval workflow; retry routing uses the shared transition handler only"
+  - "This module does not own the case timeline storage; it reads case_activity_events written by all modules via core-infrastructure"
+  - "This module does not implement analytics or KPI aggregation; decline reason breakdowns and placement rates are computed by analytics-module"
+  - "This module does not cancel sent outreach actions; sent records are permanent and exempt from auto-cancel"
+  - "This module does not implement manager queue views or SLA aging; those belong to analytics-module"
+  - "This module does not perform family communication or notification; it records the outcome only"
+
+failure_modes:
+  - "Accepted outcome without sent outreach validation: omitting the OutreachAction.approval_status=sent check allows coordinators to record an acceptance for a facility that was never contacted, creating a fraudulent placement record"
+  - "Non-atomic auto-cancel: canceling outstanding outreach actions in a loop outside the case-advance transaction leaves some outreach records in approved state if the process crashes mid-loop, allowing coordinators to send outreach after a case is already accepted"
+  - "Sent actions incorrectly auto-canceled: a filter bug (e.g., omitting the approval_status NOT IN ['sent'] guard) cancels sent communication records, destroying permanent HIPAA-required audit history"
+  - "All outcomes not audited: if the AuditEvent write is inside a conditional block that only triggers for declined outcomes, accepted/placed/family_declined/withdrawn outcomes produce no audit trail, violating HIPAA compliance requirements"
+  - "Declined outcome with null facility_id accepted: failing to enforce facility_id required for declined (vs nullable for family_declined) allows coordinators to record vague declines with no traceable facility, corrupting decline-rate analytics"
+  - "rescinded acceptance skips declined_retry_needed: if the state machine check for accepted→declined_retry_needed transition is missing, coordinators cannot process a rescinded acceptance and the case gets stuck at accepted with no retry path"
+  - "family_declined advances to closed without manager confirmation: if the auto-advance to closed triggers immediately on outcome recording (without a separate manager status-transition step), cases close without required managerial oversight"
+
+file_scope: "placementops/modules/outcomes/**"
+depends_on:
+  - "core-infrastructure"
+  - "auth-module"
+  - "outreach-module"

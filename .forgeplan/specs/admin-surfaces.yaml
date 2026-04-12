@@ -1,0 +1,212 @@
+node: "admin-surfaces"
+name: "Admin Surfaces"
+spec_type: "prescriptive"
+description: >
+  Admin-only management surfaces for the PlacementOps platform. Owns user and role management
+  (invite, edit, deactivate), CANONICAL outreach template CRUD (GET+POST+PATCH — this is the
+  single authoritative owner; outreach-module reads templates from here but performs no writes),
+  import job monitoring (GET-only read view of ImportJob records; intake-module owns the create/
+  commit workflow), organization settings management, and reference data administration
+  (hospital_reference, decline_reason_reference, payer_reference). All endpoints in this module
+  require role_key=admin; all mutations write AuditEvent rows. Returns 403 for any non-admin caller
+  before executing handler logic.
+
+inputs:
+  - name: "AuthContext"
+    type: "$shared.User"
+    required: true
+    validation: "role_key must equal 'admin'; all endpoints return 403 immediately for any other role_key value"
+  - name: "CreateUserRequest"
+    type: "AdminCreateUserRequest"
+    required: false
+    validation: "email must be unique in users table; role_key must be one of the 6 valid enum values; organization_id must match caller's organization_id"
+  - name: "UpdateUserRequest"
+    type: "AdminUpdateUserRequest"
+    required: false
+    validation: "role_key must be a valid enum value if provided; status must be 'active' or 'inactive' if provided; cannot deactivate the last active admin in the organization"
+  - name: "CreateTemplateRequest"
+    type: "AdminCreateTemplateRequest"
+    required: false
+    validation: "template_name must be non-empty; body_template must be non-empty; template_type must be a valid enum value; allowed_variables must reference only the safe allowlisted set"
+  - name: "UpdateTemplateRequest"
+    type: "AdminUpdateTemplateRequest"
+    required: false
+    validation: "template_name and body_template must be non-empty if provided; allowed_variables must not introduce variables outside the safe allowlist"
+  - name: "UpdateOrgSettingsRequest"
+    type: "AdminUpdateOrgRequest"
+    required: false
+    validation: "Organization_id in path must match caller's organization_id; no cross-org mutation permitted"
+  - name: "import_id path param"
+    type: "uuid"
+    required: false
+    validation: "ImportJob must belong to caller's organization_id; returns 404 if not found or cross-org"
+
+outputs:
+  - name: "GET /api/v1/admin/users"
+    type: "Paginated list of $shared.User records scoped to caller's organization_id"
+  - name: "POST /api/v1/admin/users"
+    type: "$shared.User — newly created user record"
+  - name: "PATCH /api/v1/admin/users/{user_id}"
+    type: "$shared.User — updated user record"
+  - name: "GET /api/v1/templates/outreach"
+    type: "List of $shared.OutreachTemplate records (active and inactive) scoped to org"
+  - name: "POST /api/v1/templates/outreach"
+    type: "$shared.OutreachTemplate — newly created template"
+  - name: "PATCH /api/v1/templates/outreach/{template_id}"
+    type: "$shared.OutreachTemplate — updated template"
+  - name: "GET /api/v1/imports"
+    type: "Paginated list of $shared.ImportJob records with status and row counts"
+  - name: "GET /api/v1/imports/{import_id}"
+    type: "$shared.ImportJob — full detail including error_detail_json"
+  - name: "GET /api/v1/admin/organization"
+    type: "OrgSettings — current organization settings record"
+  - name: "PATCH /api/v1/admin/organization"
+    type: "OrgSettings — updated organization settings record"
+  - name: "GET /api/v1/reference/hospitals"
+    type: "List of HospitalReference records"
+  - name: "GET /api/v1/reference/decline-reasons"
+    type: "List of DeclineReasonReference records"
+  - name: "GET /api/v1/reference/payers"
+    type: "List of PayerReference records"
+
+shared_dependencies:
+  - User
+  - OutreachTemplate
+  - ImportJob
+  - PatientCase
+  - AuditEvent
+
+data_models:
+  AdminCreateUserRequest:
+    email: "str — NOT NULL, unique"
+    full_name: "str — NOT NULL"
+    role_key: "str — enum: admin | intake_staff | clinical_reviewer | placement_coordinator | manager | read_only"
+    default_hospital_id: "uuid | None"
+    timezone: "str | None"
+  AdminUpdateUserRequest:
+    role_key: "str | None — enum: admin | intake_staff | clinical_reviewer | placement_coordinator | manager | read_only"
+    status: "str | None — enum: active | inactive"
+    full_name: "str | None"
+    default_hospital_id: "uuid | None"
+    timezone: "str | None"
+  AdminCreateTemplateRequest:
+    template_name: "str — NOT NULL"
+    template_type: "str — enum: email | phone_manual | task | voice_ai_script"
+    subject_template: "str | None"
+    body_template: "str — NOT NULL"
+    allowed_variables: "list[str] — subset of safe allowlist: patient_name, facility_name, payer_name, assessment_summary, coordinator_name"
+    is_active: "bool — default true"
+  AdminUpdateTemplateRequest:
+    template_name: "str | None"
+    template_type: "str | None"
+    subject_template: "str | None"
+    body_template: "str | None"
+    allowed_variables: "list[str] | None"
+    is_active: "bool | None"
+  AdminUpdateOrgRequest:
+    org_name: "str | None"
+    settings_json: "dict | None — arbitrary org-level config (timezone defaults, SLA thresholds)"
+  OrgSettings:
+    id: "uuid"
+    organization_id: "uuid"
+    org_name: "str"
+    settings_json: "dict | None"
+    updated_at: "timestamp"
+  HospitalReference:
+    id: "uuid"
+    hospital_name: "str"
+    city: "str | None"
+    state: "str | None"
+    organization_id: "uuid"
+  DeclineReasonReference:
+    code: "str — PK surrogate"
+    label: "str"
+    description: "str | None"
+  PayerReference:
+    id: "uuid"
+    payer_name: "str"
+    payer_type: "str | None"
+    organization_id: "uuid"
+
+interfaces:
+  - target_node: "core-infrastructure"
+    type: "outbound"
+    contract: "Provides User, ImportJob, AuditEvent, all reference table ORM models, AsyncSessionLocal, and get_auth_context"
+  - target_node: "auth-module"
+    type: "outbound"
+    contract: "Exports require_role Depends(); admin-surfaces imports to restrict all endpoints to admin role only; all other roles including read_only receive 403 on all admin-surfaces endpoints"
+  - target_node: "intake-module"
+    type: "outbound"
+    contract: "admin-surfaces reads ImportJob records for monitoring; intake-module is the sole writer"
+  - target_node: "outreach-module"
+    type: "outbound"
+    contract: "Owns OutreachTemplate CRUD; outreach-module reads templates via GET /api/v1/templates/outreach but performs no writes to OutreachTemplate; admin-surfaces is the canonical write owner"
+
+acceptance_criteria:
+  - id: AC1
+    description: "GET /api/v1/admin/users returns paginated list of users scoped to caller's organization_id; admin only; returns 403 for all other roles"
+    test: "pytest: (a) authenticate as admin, call GET /api/v1/admin/users, assert 200 and all returned users share caller's organization_id; (b) authenticate as manager/coordinator/intake_staff/clinical_reviewer/read_only, call same endpoint, assert 403 in all cases"
+  - id: AC2
+    description: "POST /api/v1/admin/users creates a new User record with the specified role_key and status=active; writes AuditEvent with event_type=user_created; admin only; returns 403 for non-admin"
+    test: "pytest: authenticate as admin, POST /api/v1/admin/users with valid payload, assert 201, query users table and assert new row present with correct role_key and organization_id, query audit_events and assert user_created row with actor_user_id=caller"
+  - id: AC3
+    description: "PATCH /api/v1/admin/users/{user_id} updates role_key and/or status; writes AuditEvent with event_type=user_updated; cannot deactivate the last active admin; admin only"
+    test: "pytest: (a) authenticate as admin, PATCH user to role_key=manager, assert 200 and persisted change, assert audit_events row with event_type=user_updated; (b) attempt to deactivate the only active admin user, assert 400; (c) non-admin caller, assert 403"
+  - id: AC4
+    description: "GET /api/v1/templates/outreach returns all OutreachTemplate records for org; accessible to any authenticated role (coordinators need to list templates when drafting outreach)"
+    test: "pytest: authenticate as each of 6 roles, call GET /api/v1/templates/outreach, assert 200 and templates are scoped to caller's organization_id; assert no cross-org templates returned"
+  - id: AC5
+    description: "POST /api/v1/templates/outreach creates OutreachTemplate; sets created_by_user_id; writes AuditEvent; admin only; returns 403 for non-admin"
+    test: "pytest: authenticate as admin, POST with valid template payload, assert 201 and persisted row with correct organization_id and created_by_user_id; query audit_events and assert template_created row; authenticate as placement_coordinator, POST same, assert 403"
+  - id: AC6
+    description: "PATCH /api/v1/templates/outreach/{template_id} updates template fields; writes AuditEvent with event_type=template_updated; admin only; returns 403 for non-admin; returns 404 for cross-org template_id"
+    test: "pytest: (a) authenticate as admin, PATCH template name and body, assert 200 and persisted changes, assert audit_events template_updated row; (b) authenticate as manager, assert 403; (c) use a template_id belonging to a different org, assert 404"
+  - id: AC7
+    description: "GET /api/v1/imports returns paginated ImportJob records for org with status, row counts (created_count, updated_count, failed_count); read-only; admin only; no create/commit endpoints exist in this module"
+    test: "pytest: seed two ImportJob records for org; authenticate as admin, GET /api/v1/imports, assert 200 and both jobs returned with correct counts; attempt POST /api/v1/imports from admin-surfaces router, assert no such route exists (404 or route not registered)"
+  - id: AC8
+    description: "GET /api/v1/imports/{import_id} returns full ImportJob including error_detail_json; admin only; returns 404 for cross-org import_id"
+    test: "pytest: create ImportJob with error_detail_json populated; authenticate as admin, GET /api/v1/imports/{import_id}, assert error_detail_json present in response; use import_id from a different org, assert 404"
+  - id: AC9
+    description: "GET /api/v1/admin/organization returns org settings; PATCH /api/v1/admin/organization updates settings and writes AuditEvent; admin only; returns 403 for non-admin"
+    test: "pytest: authenticate as admin, GET /api/v1/admin/organization, assert 200 with organization_id matching caller; PATCH with updated settings_json, assert 200 and persisted change; query audit_events and assert org_settings_updated row; authenticate as manager, assert 403 on PATCH"
+  - id: AC10
+    description: "GET /api/v1/reference/hospitals, /reference/decline-reasons, and /reference/payers return seeded reference data scoped to org; accessible to all authenticated roles"
+    test: "pytest: authenticate as each of 6 roles, call all three reference endpoints, assert 200 and non-empty lists; assert hospital records are scoped to caller's organization_id; assert decline_reason_reference and payer_reference entries include all seeded codes"
+  - id: AC11
+    description: "All admin mutation endpoints (POST/PATCH) write an AuditEvent row with actor_user_id, entity_type, entity_id, event_type, old_value_json, and new_value_json"
+    test: "pytest: perform a user role update; query audit_events and assert row contains actor_user_id=caller, entity_type='user', entity_id=updated_user_id, event_type='user_updated', old_value_json with previous role_key, new_value_json with new role_key"
+
+constraints:
+  - "Every endpoint in this module must gate on role_key=admin before any handler logic executes; the 403 check is not optional and cannot be delegated to individual handler implementations"
+  - "Template allowed_variables must be validated against the safe allowlist (patient_name, facility_name, payer_name, assessment_summary, coordinator_name) on create and update; any variable outside the allowlist returns 400"
+  - "Admin-surfaces owns OutreachTemplate CRUD; outreach-module must never perform POST or PATCH on outreach_templates — it reads only via GET /api/v1/templates/outreach"
+  - "Import monitoring endpoints are GET-only; no POST/PATCH/DELETE endpoints for ImportJob exist in this module; intake-module owns the full import lifecycle"
+  - "All mutations (user create/update, template create/update, org settings update) must write AuditEvent rows via core-infrastructure insert-only pattern before returning 200/201"
+  - "User deactivation must check that at least one other active admin exists in the organization before setting status=inactive; return 400 if this would leave the org with zero active admins"
+  - "All queries must be scoped to request.state.organization_id; cross-org access to any resource returns 404 (not 403) to avoid information disclosure"
+  - "Reference data endpoints (hospitals, decline-reasons, payers) are read-only in Phase 1; no admin UI for creating reference records via API"
+
+non_goals:
+  - "This node does not implement the import workflow (upload, column mapping, validation, commit) — those endpoints live exclusively in intake-module"
+  - "This node does not implement outreach action creation, approval, or sending — outreach-module owns the full outreach lifecycle"
+  - "This node does not implement analytics or queue views — analytics-module owns all reporting endpoints"
+  - "This node does not implement facility CRUD or capability management — facilities-module owns those endpoints"
+  - "This node does not perform email delivery or any external communications"
+  - "This node does not implement role assignment to individual cases — case assignment is handled by intake-module and clinical-module"
+
+failure_modes:
+  - "403 gate implemented in individual handlers rather than a shared dependency — a new handler added without the gate silently exposes admin data to non-admin roles"
+  - "Template allowed_variables not validated on PATCH — a coordinator-visible template is updated to include an unsafe variable that evaluates user-controlled expressions during outreach drafting"
+  - "Import monitoring route inadvertently wired to intake-module's commit handler — admin UI triggers a second background commit of an already-committed ImportJob, creating duplicate cases"
+  - "AuditEvent not written atomically with the mutation — if the write succeeds but audit insert fails silently, admin actions are not traceable for HIPAA compliance"
+  - "Cross-org ImportJob access returns 403 instead of 404 — leaks existence of ImportJob IDs belonging to other organizations"
+  - "Last-admin deactivation check omitted — org is locked out with no admin able to re-enable access or manage users"
+  - "OutreachTemplate queries not scoped to organization_id — templates from other orgs appear in template picker, exposing sensitive communication content"
+
+file_scope: "placementops/modules/admin/**"
+depends_on:
+  - core-infrastructure
+  - auth-module
+  - intake-module
+  - outreach-module

@@ -1,0 +1,36 @@
+{
+  "node_id": "admin-surfaces",
+  "status": "reviewed",
+  "node_type": "service",
+  "file_count": 10,
+  "test_file_count": 0,
+  "dependency_count": 4,
+  "connection_count": 4,
+  "entrypoints": [],
+  "hotspot_files": [],
+  "recent_findings": [],
+  "decision_ids": [
+    "D-admin-1-allowed-variables-allowlist"
+  ],
+  "constraints": [
+    "Every endpoint in this module must gate on role_key=admin before any handler logic executes; the 403 check is not optional and cannot be delegated to individual handler implementations",
+    "Template allowed_variables must be validated against the safe allowlist (patient_name, facility_name, payer_name, assessment_summary, coordinator_name) on create and update; any variable outside the allowlist returns 400",
+    "Admin-surfaces owns OutreachTemplate CRUD; outreach-module must never perform POST or PATCH on outreach_templates — it reads only via GET /api/v1/templates/outreach",
+    "Import monitoring endpoints are GET-only; no POST/PATCH/DELETE endpoints for ImportJob exist in this module; intake-module owns the full import lifecycle",
+    "All mutations (user create/update, template create/update, org settings update) must write AuditEvent rows via core-infrastructure insert-only pattern before returning 200/201",
+    "User deactivation must check that at least one other active admin exists in the organization before setting status=inactive; return 400 if this would leave the org with zero active admins",
+    "All queries must be scoped to request.state.organization_id; cross-org access to any resource returns 404 (not 403) to avoid information disclosure",
+    "Reference data endpoints (hospitals, decline-reasons, payers) are read-only in Phase 1; no admin UI for creating reference records via API"
+  ],
+  "shared_models": [],
+  "cross_refs": [
+    "Depends on: core-infrastructure",
+    "Depends on: auth-module",
+    "Depends on: intake-module",
+    "Depends on: outreach-module",
+    "Connected to: core-infrastructure",
+    "Connected to: auth-module",
+    "Connected to: intake-module",
+    "Connected to: outreach-module"
+  ]
+}

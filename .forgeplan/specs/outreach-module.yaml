@@ -1,0 +1,175 @@
+node: "outreach-module"
+name: "Outreach Module"
+spec_type: "prescriptive"
+description: >
+  Human-in-the-loop outreach workflow managing a 6-state approval machine
+  (draft → pending_approval → approved → sent; also canceled from any
+  pre-sent state, and failed as a terminal delivery-error state from sent).
+  Email drafts are created from admin-managed templates using Jinja2
+  SandboxedEnvironment with a fixed allowlist of safe variables only
+  (patient_name, facility_name, payer_name, assessment_summary,
+  coordinator_name). No user-supplied template expressions are evaluated.
+  Email delivery is stubbed in Phase 1: records are marked sent and
+  sent_at/sent_by are written, but email body content is NOT logged in
+  plaintext. phone_manual and task channels bypass the approval flow and
+  are created directly at approval_status=sent; the system atomically
+  advances the case through any intermediate outreach states to
+  pending_facility_response. Template CRUD is owned exclusively by
+  admin-surfaces; this module exposes read-only GET /templates/outreach.
+  An outreach queue surfaces all cross-case actions filterable by status.
+  All outreach state changes write both case_activity_events and AuditEvent
+  rows for HIPAA compliance.
+
+inputs:
+  - name: "case_id"
+    type: "uuid"
+    required: true
+    validation: "Must reference an existing PatientCase; case must not be closed"
+  - name: "outreach_action_payload"
+    type: "OutreachActionCreate"
+    required: true
+    validation: "action_type and channel required; draft_body required; template_id optional; if template_id provided must reference active OutreachTemplate in same organization"
+  - name: "template_variables"
+    type: "TemplateVariableMap"
+    required: false
+    validation: "Keys must be within allowlist: patient_name, facility_name, payer_name, assessment_summary, coordinator_name; any extra key rejected with 400"
+  - name: "actor_user"
+    type: "$shared.User"
+    required: true
+    validation: "Must have role_key in [placement_coordinator, admin]; role enforced per action endpoint"
+
+outputs:
+  - name: "outreach_action"
+    type: "$shared.OutreachAction"
+  - name: "case_status"
+    type: "string"
+  - name: "audit_event"
+    type: "$shared.AuditEvent"
+  - name: "case_activity_event"
+    type: "CaseActivityEvent"
+
+shared_dependencies:
+  - OutreachAction
+  - OutreachTemplate
+  - PatientCase
+  - FacilityMatch
+  - FacilityContact
+  - User
+  - AuditEvent
+
+data_models:
+  OutreachActionCreate:
+    patient_case_id: uuid
+    facility_id: "uuid — nullable"
+    template_id: "uuid — nullable"
+    action_type: "string — enum: facility_outreach | internal_alert | cm_update | follow_up_reminder"
+    channel: "string — enum: email | phone_manual | task | sms | voicemail_drop | voice_ai"
+    draft_subject: "string — nullable"
+    draft_body: "string — NOT NULL"
+  TemplateVariableMap:
+    patient_name: "string — nullable"
+    facility_name: "string — nullable"
+    payer_name: "string — nullable"
+    assessment_summary: "string — nullable"
+    coordinator_name: "string — nullable"
+  CaseActivityEvent:
+    case_id: uuid
+    actor_user_id: "uuid — nullable"
+    event_type: string
+    old_status: "string — nullable"
+    new_status: "string — nullable"
+    occurred_at: timestamp
+  OutreachQueue:
+    items: "list[OutreachAction]"
+    total: integer
+    page: integer
+    page_size: integer
+
+interfaces:
+  - target_node: "core-infrastructure"
+    type: "outbound"
+    contract: "Provides OutreachAction, OutreachTemplate, FacilityContact ORM models, transition_case_status, AsyncSessionLocal, and get_auth_context"
+  - target_node: "auth-module"
+    type: "outbound"
+    contract: "Exports require_role Depends(); outreach-module imports to restrict outreach approval to placement_coordinator and admin; drafting and all mutations also restricted to placement_coordinator and admin"
+  - target_node: "matching-module"
+    type: "outbound"
+    contract: "selected_for_outreach flag on FacilityMatch is read by outreach-module to determine which facilities to target; matching-module owns writes to this flag via PATCH .../select"
+  - target_node: "outcomes-module"
+    type: "read"
+    contract: "Reads OutreachAction records to validate that a sent outreach exists for the claimed facility_id before accepting accepted or declined outcomes; also reads all draft/pending_approval/approved outreach actions to auto-cancel on acceptance or placement"
+  - target_node: "admin-surfaces"
+    type: "outbound"
+    contract: "Owns OutreachTemplate CRUD; outreach-module reads templates via GET /api/v1/templates/outreach but performs no writes to OutreachTemplate; admin-surfaces is the canonical write owner"
+
+acceptance_criteria:
+  - id: AC1
+    description: "Draft creation with allowlisted template variable substitution"
+    test: "POST /api/v1/cases/{case_id}/outreach-actions with template_id and template_variables containing only allowlisted keys returns 201 with approval_status=draft and rendered body; POST with a non-allowlisted variable key (e.g. config.__class__) returns 400 before rendering"
+  - id: AC2
+    description: "Jinja2 SandboxedEnvironment prevents SSTI"
+    test: "POST with draft_body containing '{{ config.__class__.__mro__ }}' or any expression referencing undeclared names returns 400 and does not evaluate the expression; confirm via unit test that SandboxedEnvironment is used (not Environment)"
+  - id: AC3
+    description: "Draft edit restricted to correct role and state"
+    test: "PATCH /api/v1/outreach-actions/{action_id} by placement_coordinator or admin on a draft record returns 200; same request by intake_staff or clinical_reviewer returns 403; PATCH on a sent record returns 409"
+  - id: AC4
+    description: "Submit-for-approval advances OutreachAction and case"
+    test: "POST /api/v1/outreach-actions/{action_id}/submit-for-approval on a draft returns 200 with approval_status=pending_approval; case.current_status advances to outreach_pending_approval if not already there; AuditEvent and case_activity_event are written"
+  - id: AC5
+    description: "Approve advances OutreachAction and case on first approval"
+    test: "POST /api/v1/outreach-actions/{action_id}/approve sets approved_by_user_id and approval_status=approved; when this is the first approved outreach_action for the case, case.current_status advances to outreach_in_progress; approved_at timestamp written; AuditEvent written"
+  - id: AC6
+    description: "Mark-sent stubs email delivery without logging body content"
+    test: "POST /api/v1/outreach-actions/{action_id}/mark-sent sets approval_status=sent, sent_by_user_id, sent_at; confirm AuditEvent new_value_json does NOT contain draft_body or draft_subject fields; case advances to pending_facility_response when first action is marked sent"
+  - id: AC7
+    description: "Cancel permitted from pre-sent states only"
+    test: "POST /api/v1/outreach-actions/{action_id}/cancel on draft/pending_approval/approved/failed records returns 200 with approval_status=canceled; POST cancel on a sent record returns 409 with error message 'sent records are permanent communication records'"
+  - id: AC8
+    description: "phone_manual and task channels bypass approval with atomic state advance"
+    test: "POST /api/v1/cases/{case_id}/outreach-actions with channel=phone_manual returns 201 with approval_status=sent immediately (no submit-for-approval or approve step); case.current_status advances through any intermediate outreach states and lands at pending_facility_response in a single atomic operation; no pending_approval or approved intermediate state is ever written for these channels"
+  - id: AC9
+    description: "Outreach queue returns cross-case actions filterable by approval_status"
+    test: "GET /api/v1/queues/outreach with filter approval_status=pending_approval returns only OutreachAction records in pending_approval state scoped to request.state.organization_id; unauthenticated request returns 401"
+  - id: AC10
+    description: "Template listing is read-only"
+    test: "GET /api/v1/templates/outreach returns list of active OutreachTemplate records for the organization; POST/PATCH/DELETE to /api/v1/templates/outreach returns 405 (method not allowed); admin-surfaces owns template CRUD"
+  - id: AC11
+    description: "All outreach state changes produce AuditEvent and case_activity_event"
+    test: "After each state transition (draft→pending_approval, pending_approval→approved, approved→sent, any→canceled), query audit_events where entity_type=outreach_action and entity_id=action_id; exactly one AuditEvent per transition present; matching case_activity_event written with correct old_status and new_status"
+  - id: AC12
+    description: "Closed-case mutation rejected"
+    test: "All POST/PATCH endpoints for a case with current_status=closed return 409 before the handler executes; enforced by core-infrastructure shared middleware"
+
+constraints:
+  - "Template variable substitution MUST use Jinja2 SandboxedEnvironment (not bare Environment); any template expression referencing names outside the allowlist [patient_name, facility_name, payer_name, assessment_summary, coordinator_name] MUST be rejected with 400 before rendering"
+  - "Email body content (draft_body, draft_subject) MUST NOT appear in AuditEvent new_value_json or any log output; only metadata (action_id, sent_at, sent_by_user_id, delivery_status) may be recorded"
+  - "Sending is a permanent record; approval_status=sent MUST NOT be transitioned to any other state; cancel endpoint MUST return 409 for sent records"
+  - "phone_manual and task channel actions MUST be created at approval_status=sent in a single atomic write; no intermediate draft/pending_approval/approved rows are permitted for these channels"
+  - "The atomic case advance for phone_manual/task MUST use the shared state-machine transition handler; the module MUST NOT write PatientCase.current_status directly"
+  - "All mutating endpoints (POST, PATCH) MUST reject requests where case.current_status=closed with 409 (enforced by core-infrastructure middleware, verified here)"
+  - "Template CRUD (POST/PATCH/DELETE on /templates/outreach) is forbidden in this module; only GET is permitted"
+  - "organization_id scoping MUST be applied to all queries; cross-tenant data MUST never be returned"
+  - "Only placement_coordinator or admin roles may create, edit, submit, approve, send, or cancel outreach actions"
+
+non_goals:
+  - "This module does not own OutreachTemplate CRUD; template create/update/delete belongs exclusively to admin-surfaces"
+  - "This module does not perform real email delivery in Phase 1; it stubs delivery only"
+  - "This module does not implement voice/AI call features (call_transcript_url, call_duration_seconds, call_outcome_summary are Phase 2 fields stored in schema but not populated)"
+  - "This module does not record placement outcomes; outcome recording belongs to outcomes-module"
+  - "This module does not implement auto-retry on failed outreach; coordinator must manually cancel a failed action"
+  - "This module does not implement SMS or voice_ai channel logic in Phase 1; schema fields are stored for forward compatibility only"
+
+failure_modes:
+  - "SSTI vulnerability: using Jinja2 bare Environment instead of SandboxedEnvironment allows a coordinator to inject '{{ ''.__class__.__mro__[2].__subclasses__() }}' into a template body and execute arbitrary code"
+  - "Email body logged in plaintext: if AuditEvent serializer includes all OutreachAction fields by default, draft_body and draft_subject are written to the audit log, creating a HIPAA-violating record of clinical communication content"
+  - "Sent action incorrectly canceled: missing the approval_status guard on the cancel endpoint allows coordinators to cancel sent records, destroying the permanent communication history"
+  - "phone_manual non-atomic advance: if the intermediate outreach states are written in separate DB transactions, a crash between writes leaves the case stuck at outreach_pending_approval without a sent outreach action, causing a data inconsistency"
+  - "Non-allowlisted template variable silently rendered: if the allowlist check is applied after rendering instead of before, a coordinator could inject '{{ request.app.state.db_password }}' and read the rendered output from the draft body"
+  - "Cross-tenant template access: omitting organization_id filter on GET /templates/outreach returns templates belonging to other organizations"
+  - "Case advance missing: if the first-approved-action logic is evaluated at the OutreachAction level only and not checked against case.current_status, the case may fail to advance to outreach_in_progress when a second action is approved after the first was canceled"
+
+file_scope: "placementops/modules/outreach/**"
+depends_on:
+  - "core-infrastructure"
+  - "auth-module"
+  - "matching-module"

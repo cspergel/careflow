@@ -1,0 +1,85 @@
+{
+  "node_id": "frontend-app-shell",
+  "status": "reviewed",
+  "node_type": "frontend",
+  "file_count": 58,
+  "test_file_count": 3,
+  "dependency_count": 9,
+  "connection_count": 9,
+  "entrypoints": [
+    "frontend/middleware.ts",
+    "frontend/src/lib/supabase/server.ts",
+    "frontend/src/app/layout.tsx",
+    "frontend/src/app/login/page.tsx",
+    "frontend/src/app/dashboard/page.tsx"
+  ],
+  "hotspot_files": [],
+  "recent_findings": [
+    {
+      "pass": "review",
+      "agent": "reviewer",
+      "finding": "intake_complete",
+      "resolution": "needs_clinical_review",
+      "file": null
+    },
+    {
+      "pass": "review",
+      "agent": "reviewer",
+      "finding": "facility_options_generated",
+      "resolution": "outreach_pending_approval",
+      "file": null
+    },
+    {
+      "pass": "review",
+      "agent": "reviewer",
+      "finding": "accepted",
+      "resolution": "declined_retry_needed",
+      "file": null
+    }
+  ],
+  "decision_ids": [
+    "D-frontend-4-tailwind-v4",
+    "D-frontend-1-openapi-ts-config",
+    "D-frontend-2-middleware-token-refresh",
+    "D-frontend-3-api-client-placeholder",
+    "D-frontend-5-nuqs-v1-api",
+    "D-frontend-6-rsi-dynamic-import"
+  ],
+  "constraints": [
+    "Use @supabase/ssr exclusively for auth; call getUser() in server components and middleware — never getSession() in server components",
+    "All case list tables must configure TanStack Table v8 with manualSorting: true, manualFiltering: true, manualPagination: true — no client-side sorting, filtering, or pagination of backend data",
+    "Filter, sort, and pagination state for all tables must be persisted in URL query parameters using nuqs",
+    "The typed API client must be generated from FastAPI /openapi.json using @hey-api/openapi-ts; the generation command must be a npm script (e.g. npm run generate-client); no hand-written API fetch wrappers are permitted for backend endpoints",
+    "The clinical assessment form must use react-hook-form v7 with a Zod schema covering all 20+ fields; field-level validation errors must display inline without full-page reload",
+    "Quick-edit drawers must use shadcn/ui Sheet component — not Drawer, Modal, or Dialog",
+    "The spreadsheet import flow UI must use react-spreadsheet-import for column mapping and row preview",
+    "Tailwind v4 configuration must use tw-animate-css package — not tailwindcss-animate",
+    "StatusBadge must use a STATUS_CONFIG map keyed by the PatientCase status enum; the map must be defined such that TypeScript exhaustiveness checking produces a compile error if a new status is added without a corresponding config entry",
+    "The 'Select For Outreach' contextual prompt ('Ready to create outreach? Go to Outreach tab →') must appear after the coordinator selects at least one facility and must include a tab navigation action",
+    "The re-match warning modal must require explicit confirmation before POST /api/v1/cases/{case_id}/matches/generate is called when existing matches are present",
+    "phone_manual and task outreach actions must atomically advance case state to pending_facility_response in a single UI action with no intermediate approval step shown to the user",
+    "The Audit tab must only be rendered in the DOM for admin role; other roles must not receive audit log data even if they attempt direct API calls (enforcement is backend — frontend must also conditionally render the tab)",
+    "All API error states (4xx, 5xx, network timeout) must be handled with user-visible error messages; silent failures are not permitted"
+  ],
+  "shared_models": [],
+  "cross_refs": [
+    "Depends on: auth-module",
+    "Depends on: intake-module",
+    "Depends on: clinical-module",
+    "Depends on: facilities-module",
+    "Depends on: matching-module",
+    "Depends on: outreach-module",
+    "Depends on: outcomes-module",
+    "Depends on: analytics-module",
+    "Depends on: admin-surfaces",
+    "Connected to: auth-module",
+    "Connected to: intake-module",
+    "Connected to: clinical-module",
+    "Connected to: facilities-module",
+    "Connected to: matching-module",
+    "Connected to: outreach-module",
+    "Connected to: outcomes-module",
+    "Connected to: analytics-module",
+    "Connected to: admin-surfaces"
+  ]
+}

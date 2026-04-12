@@ -1,0 +1,21 @@
+{
+  "status": "fail",
+  "tier": "LARGE",
+  "message": "Server failed to start: npm error code ENOENT\nnpm error syscall open\nnpm error path C:\\Users\\drcra\\Documents\\Coding Projects\\Placement-ops-careflow\\package.json\nnpm error errno -4058\nnpm error enoent Could not read package.json: Error: ENOENT: no such file or directory, open 'C:\\Users\\drcra\\Documents\\Coding Projects\\Placem",
+  "errorType": "code",
+  "level_reached": 0,
+  "endpoints_tested": 0,
+  "endpoints_passed": 0,
+  "findings": [
+    {
+      "node": "app-shell",
+      "category": "runtime-verification",
+      "severity": "HIGH",
+      "confidence": 95,
+      "description": "Server failed to start: Server failed to start: npm error code ENOENT\nnpm error syscall open\nnpm error path C:\\Users\\drcra\\Documents\\Coding Projects\\Placement-ops-careflow\\package.json\nnpm error errno -4058\nnpm error enoent ",
+      "file": "",
+      "line": "",
+      "fix": "Fix the startup error — check server entry point and dependencies"
+    }
+  ]
+}

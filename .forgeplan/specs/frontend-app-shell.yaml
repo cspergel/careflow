@@ -1,0 +1,231 @@
+node: "frontend-app-shell"
+name: "Frontend App Shell"
+spec_type: "prescriptive"
+description: >
+  Next.js 14+ App Router application shell providing the complete desktop-first UI for the
+  PlacementOps platform. Implements Supabase Auth session management using @supabase/ssr with
+  getUser() (never getSession()) in server components. Generates a fully typed API client from
+  the FastAPI /openapi.json spec via @hey-api/openapi-ts. All 10 operational screens are
+  implemented with dense, information-rich layouts optimized for desktop coordinators. Navigation
+  is a persistent left sidebar with role-based link visibility. All case list tables use TanStack
+  Table v8 with manualSorting, manualFiltering, and manualPagination all set to true (server-side
+  data management); filter/sort/pagination state is URL-persisted via nuqs. The 20+ field clinical
+  assessment form uses react-hook-form v7 + Zod. Quick-edit drawers use shadcn/ui Sheet (not
+  Drawer). The spreadsheet import flow UI uses react-spreadsheet-import. Status badges use a
+  STATUS_CONFIG map with TypeScript exhaustiveness checking. Tailwind v4 is configured with
+  tw-animate-css (not tailwindcss-animate). All shadcn/ui components are used without
+  modification of core behavior. The app includes six shared component primitives: StatusBadge,
+  CaseTable, FacilityCard, ActivityTimeline, DraftEditor, FilterBar.
+
+inputs:
+  - name: "NEXT_PUBLIC_SUPABASE_URL"
+    type: "string"
+    required: true
+    validation: "Must be a valid HTTPS Supabase project URL"
+  - name: "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+    type: "string"
+    required: true
+    validation: "Must be a valid Supabase anon/public API key"
+  - name: "NEXT_PUBLIC_API_BASE_URL"
+    type: "string"
+    required: true
+    validation: "Must be the base URL of the FastAPI backend (e.g. http://localhost:8000); used by the typed API client"
+  - name: "Supabase Auth session"
+    type: "SupabaseSession"
+    required: true
+    validation: "Obtained via getUser() in server components; missing or expired session redirects to /login; never obtained via getSession()"
+  - name: "FastAPI /openapi.json"
+    type: "OpenAPI 3.x schema"
+    required: true
+    validation: "Must be accessible at NEXT_PUBLIC_API_BASE_URL/openapi.json at build time for @hey-api/openapi-ts client generation"
+
+outputs:
+  - name: "/login screen"
+    type: "Next.js page — Supabase Auth login form"
+  - name: "/dashboard screen"
+    type: "Next.js page — KPI cards and analytics summary for manager and admin only"
+  - name: "/intake screen"
+    type: "Next.js page — Intake Workbench with census table and case create/edit"
+  - name: "/intake/import screen"
+    type: "Next.js page — Spreadsheet import flow (upload, map columns, validate, commit)"
+  - name: "/queue screen"
+    type: "Next.js page — Operations Queue with status tab filters and aging flags"
+  - name: "/cases/[case_id] screen"
+    type: "Next.js page — 6-tab Patient Case Detail"
+  - name: "/facilities screen"
+    type: "Next.js page — Facility Directory with search and filters"
+  - name: "/facilities/[facility_id] screen"
+    type: "Next.js page — Facility Detail with 4 tabs"
+  - name: "/outreach screen"
+    type: "Next.js page — Cross-case Outreach Dashboard"
+  - name: "/analytics screen"
+    type: "Next.js page — Analytics Dashboard with KPI cards and charts"
+  - name: "/admin screen"
+    type: "Next.js page — Admin Settings with 4 tabs"
+  - name: "Typed API client"
+    type: "Generated TypeScript client from @hey-api/openapi-ts"
+  - name: "Shared component library"
+    type: "StatusBadge, CaseTable, FacilityCard, ActivityTimeline, DraftEditor, FilterBar"
+
+shared_dependencies:
+  - PatientCase
+  - Facility
+  - User
+  - OutreachAction
+  - ClinicalAssessment
+  - FacilityMatch
+  - ImportJob
+  - PlacementOutcome
+  - OutreachTemplate
+  - FacilityCapabilities
+  - AuditEvent
+
+data_models:
+  StatusConfig:
+    label: "str — human-readable status label"
+    color: "str — Tailwind color class"
+    description: "str — tooltip text"
+  NavItem:
+    label: "str"
+    href: "str"
+    icon: "LucideIcon"
+    allowed_roles: "list[str] — role_key values that can see this nav item"
+  CaseTabId:
+    value: "str — enum: overview | clinical | matches | outreach | timeline | audit"
+  ImportFlowState:
+    step: "str — enum: upload | mapping | validating | ready | committing | complete | failed"
+    import_job_id: "uuid | None"
+    error_summary: "str | None — shown in failed state"
+  MatchSelectionPrompt:
+    visible: "bool — true after coordinator selects >= 1 facility for outreach"
+    message: "str — 'Ready to create outreach? Go to Outreach tab →'"
+  ReMatchWarning:
+    message: "str — 'Re-generating matches will clear your current selections'"
+  RetryRouteDestination:
+    value: "str — enum: matching | outreach"
+
+interfaces:
+  - target_node: "auth-module"
+    type: "read/write"
+    contract: "Calls POST /api/v1/auth/login (login form), GET /api/v1/auth/me (session hydration), POST /api/v1/auth/logout; uses Supabase Auth session for server-side route protection via getUser()"
+  - target_node: "intake-module"
+    type: "read/write"
+    contract: "Calls POST /api/v1/cases (create case), GET /api/v1/cases (list/filter), PATCH /api/v1/cases/{case_id} (edit), POST /api/v1/cases/{case_id}/mark-intake-complete, POST /api/v1/imports (upload), POST /api/v1/imports/{id}/map-columns, POST /api/v1/imports/{id}/validate, POST /api/v1/imports/{id}/commit, GET /api/v1/imports/{id}, GET /api/v1/queues/intake"
+  - target_node: "clinical-module"
+    type: "read/write"
+    contract: "Calls GET /api/v1/cases/{case_id}/assessments, POST /api/v1/cases/{case_id}/assessments, PATCH /api/v1/assessments/{assessment_id}; renders 20+ field clinical assessment form in Case Detail Clinical tab"
+  - target_node: "facilities-module"
+    type: "read/write"
+    contract: "Calls GET /api/v1/facilities (directory), GET /api/v1/facilities/{facility_id} (detail), POST /api/v1/facilities (admin create), PATCH /api/v1/facilities/{facility_id} (admin edit), PUT /api/v1/facilities/{facility_id}/capabilities, GET+POST+PATCH /api/v1/facilities/{facility_id}/insurance-rules; renders Facility Directory and Facility Detail screens"
+  - target_node: "matching-module"
+    type: "read/write"
+    contract: "Calls POST /api/v1/cases/{case_id}/matches/generate, GET /api/v1/cases/{case_id}/matches, PATCH /api/v1/cases/{case_id}/matches/{match_id}/select; renders Facility Matches tab with ranked cards, scores, blockers, selection toggles, and re-match warning modal"
+  - target_node: "outreach-module"
+    type: "read/write"
+    contract: "Calls POST /api/v1/cases/{case_id}/outreach-actions, PATCH /api/v1/outreach-actions/{action_id}, POST approve/submit-for-approval/mark-sent/cancel endpoints, GET /api/v1/cases/{case_id}/outreach-actions, GET /api/v1/queues/outreach, GET /api/v1/templates/outreach; renders DraftEditor and Outreach tab"
+  - target_node: "outcomes-module"
+    type: "read/write"
+    contract: "Calls POST /api/v1/cases/{case_id}/outcomes, GET /api/v1/cases/{case_id}/outcomes, GET /api/v1/cases/{case_id}/timeline, POST /api/v1/cases/{case_id}/status-transition (retry routing from declined_retry_needed); renders Timeline tab and outcome recording forms"
+  - target_node: "analytics-module"
+    type: "inbound"
+    contract: "Calls GET /api/v1/queues/operations, GET /api/v1/queues/manager-summary, GET /api/v1/analytics/dashboard, GET /api/v1/analytics/outreach-performance; renders Operations Queue screen and Analytics Dashboard screen"
+  - target_node: "admin-surfaces"
+    type: "read/write"
+    contract: "Calls GET+POST+PATCH /api/v1/admin/users, GET+POST+PATCH /api/v1/templates/outreach, GET /api/v1/imports, GET /api/v1/imports/{import_id}, GET+PATCH /api/v1/admin/organization, GET /api/v1/reference/* endpoints; renders Admin Settings screen"
+
+acceptance_criteria:
+  - id: AC1
+    description: "Login screen authenticates via Supabase Auth and redirects to the role-appropriate default landing screen after session is established"
+    test: "E2E (Playwright): navigate to /login; enter valid credentials; assert redirect to /intake for intake_staff, /queue for clinical_reviewer and placement_coordinator, /dashboard for manager and admin and read_only; assert authenticated user name appears in top bar"
+  - id: AC2
+    description: "Left sidebar shows only role-appropriate navigation links; server-side route protection redirects unauthenticated users to /login"
+    test: "E2E: authenticate as placement_coordinator; assert sidebar shows Operations Queue, Outreach, Facilities links and does NOT show Analytics or Admin links; clear session cookie; navigate to /analytics; assert redirect to /login"
+  - id: AC3
+    description: "All case list tables use TanStack Table v8 with manualSorting, manualFiltering, manualPagination=true; filter and sort state is URL-persisted via nuqs; page refresh retains filter/sort state"
+    test: "Unit (Jest/RTL): render CaseTable with mock data; assert TanStack Table instance has manualSorting=true, manualFiltering=true, manualPagination=true; E2E: apply a status filter on Operations Queue, reload page, assert filter is still applied and URL contains filter param"
+  - id: AC4
+    description: "Typed API client is generated from FastAPI /openapi.json via @hey-api/openapi-ts; all API calls in the app use the typed client; no raw fetch() calls to backend endpoints"
+    test: "Build check: run `npm run generate-client` and assert no TypeScript errors in generated client output; grep frontend/** for raw fetch() calls to NEXT_PUBLIC_API_BASE_URL and assert none found outside the generated client directory"
+  - id: AC5
+    description: "Server components use @supabase/ssr getUser() to validate session; getSession() is never called in server components"
+    test: "Static analysis: grep frontend/**/*.tsx for 'getSession()' in server component files (layout.tsx, page.tsx not in 'use client' components) and assert zero matches; unit test: verify auth middleware redirects to /login when getUser() returns null"
+  - id: AC6
+    description: "Intake Workbench displays census table with create case form; duplicate warning appears when patient_name+dob+hospital_id match an existing active case; quick-edit drawer uses shadcn/ui Sheet component"
+    test: "E2E: navigate to /intake; click 'New Case'; fill patient_name and dob matching an existing case; assert duplicate warning banner appears; close and open quick-edit for existing case; assert Sheet component is rendered (not Drawer); assert drawer allows editing intake fields"
+  - id: AC7
+    description: "Spreadsheet Import flow: upload XLSX, map columns, validate, review per-row results, commit; commit button disabled until ImportJob.status=ready; failed state shows error summary and 'Start New Import' action"
+    test: "E2E: navigate to /intake/import; upload a valid XLSX file; assert column mapping step appears; map required columns and submit; assert validation results table shows per-row status; assert commit button is disabled if ImportJob.status != ready; complete flow to commit; mock a failed ImportJob; assert error summary is displayed and 'Start New Import' button resets the flow to upload step"
+  - id: AC8
+    description: "Operations Queue shows status tab filters (all, intake, clinical, matching, outreach, response, declined-retry); SLA aging flags are visually indicated; declined_retry_needed cases show 'Route Retry' action with destination selector"
+    test: "E2E: navigate to /queue; assert tab filters are present; select 'declined-retry' tab; assert cases in declined_retry_needed status are shown; assert 'Route Retry' button is visible per case; click it; assert destination selector offers 'matching' and 'outreach' options; select and confirm; assert case status changes"
+  - id: AC9
+    description: "Patient Case Detail has 6 tabs: Overview, Clinical Review, Facility Matches, Outreach, Timeline, Audit; Audit tab is only visible to admin role"
+    test: "E2E: navigate to /cases/{case_id} as placement_coordinator; assert 5 tabs visible (no Audit tab); navigate as admin; assert 6 tabs visible including Audit; click each tab and assert content loads without error"
+  - id: AC10
+    description: "Facility Matches tab: Generate/Regenerate button present; facility cards show name, type, distance, scores, is_recommended badge, blocker chips, explanation text; Select For Outreach toggle per non-blocked facility; re-match warning modal shown before re-generating; contextual prompt appears after selecting a facility"
+    test: "E2E: open Facility Matches tab on a case with existing matches; assert facility cards render with score breakdown; click 'Select For Outreach' on a non-blocked facility; assert contextual prompt 'Ready to create outreach? Go to Outreach tab →' appears; click Regenerate; assert warning modal with 'Re-generating matches will clear your current selections' appears before proceeding"
+  - id: AC11
+    description: "Outreach tab DraftEditor allows creating a draft from a template, editing subject/body, submitting for approval, approving, marking sent, and canceling; phone_manual/task outreach atomically advances case state without approval flow"
+    test: "E2E: open Outreach tab; click 'Create Draft'; select a template; assert subject/body pre-filled; edit body; submit for approval; assert status badge changes to pending_approval; approve (as coordinator); assert status=approved; mark sent; assert status=sent; create a phone_manual outreach action; assert it is created directly at sent status and case advances to pending_facility_response"
+  - id: AC12
+    description: "Clinical Review tab renders the 20+ field clinical assessment form using react-hook-form v7 + Zod with full field validation; form submission fails fast with per-field errors on invalid input"
+    test: "Unit (RTL): render ClinicalAssessmentForm; attempt submit with recommended_level_of_care empty; assert Zod validation error displayed on that field; set dialysis_required=true; assert dialysis_type field becomes required; fill all required fields; assert submit button enabled and onSubmit called with typed payload"
+  - id: AC13
+    description: "StatusBadge component uses STATUS_CONFIG map with TypeScript exhaustiveness checking; adding a new status value without updating STATUS_CONFIG causes a TypeScript compile error"
+    test: "Unit (Jest): render StatusBadge with each of the 14 valid status values; assert correct label and color class for each; TypeScript test: add a new status value to the PatientCase status type without adding it to STATUS_CONFIG; run tsc and assert a compile error is produced"
+  - id: AC14
+    description: "npm run dev starts the Next.js dev server with no TypeScript errors and no console errors for the happy-path flows"
+    test: "CI: run npm run dev and assert process starts within 30 seconds; run npm run build and assert exit code 0 with no TypeScript errors; run npm run type-check and assert zero errors"
+  - id: AC15
+    description: "Admin Settings screen has 4 tabs: Users (invite/edit/deactivate), Templates (CRUD), Import Jobs (list with drill-down), Org Settings; only admin role can access the /admin route"
+    test: "E2E: navigate to /admin as manager; assert redirect to /dashboard with access-denied message; navigate as admin; assert 4 tabs present; open Users tab; invite a new user; assert user appears in list; open Templates tab; create a new template; assert it appears in list"
+
+constraints:
+  - "Use @supabase/ssr exclusively for auth; call getUser() in server components and middleware — never getSession() in server components"
+  - "All case list tables must configure TanStack Table v8 with manualSorting: true, manualFiltering: true, manualPagination: true — no client-side sorting, filtering, or pagination of backend data"
+  - "Filter, sort, and pagination state for all tables must be persisted in URL query parameters using nuqs"
+  - "The typed API client must be generated from FastAPI /openapi.json using @hey-api/openapi-ts; the generation command must be a npm script (e.g. npm run generate-client); no hand-written API fetch wrappers are permitted for backend endpoints"
+  - "The clinical assessment form must use react-hook-form v7 with a Zod schema covering all 20+ fields; field-level validation errors must display inline without full-page reload"
+  - "Quick-edit drawers must use shadcn/ui Sheet component — not Drawer, Modal, or Dialog"
+  - "The spreadsheet import flow UI must use react-spreadsheet-import for column mapping and row preview"
+  - "Tailwind v4 configuration must use tw-animate-css package — not tailwindcss-animate"
+  - "StatusBadge must use a STATUS_CONFIG map keyed by the PatientCase status enum; the map must be defined such that TypeScript exhaustiveness checking produces a compile error if a new status is added without a corresponding config entry"
+  - "The 'Select For Outreach' contextual prompt ('Ready to create outreach? Go to Outreach tab →') must appear after the coordinator selects at least one facility and must include a tab navigation action"
+  - "The re-match warning modal must require explicit confirmation before POST /api/v1/cases/{case_id}/matches/generate is called when existing matches are present"
+  - "phone_manual and task outreach actions must atomically advance case state to pending_facility_response in a single UI action with no intermediate approval step shown to the user"
+  - "The Audit tab must only be rendered in the DOM for admin role; other roles must not receive audit log data even if they attempt direct API calls (enforcement is backend — frontend must also conditionally render the tab)"
+  - "All API error states (4xx, 5xx, network timeout) must be handled with user-visible error messages; silent failures are not permitted"
+
+non_goals:
+  - "This node does not implement any backend API endpoints; all data fetching is via the typed API client hitting FastAPI"
+  - "This node does not implement mobile or tablet responsive layouts; the UX is desktop-first and is not required to be usable on screens narrower than 1280px in Phase 1"
+  - "This node does not implement real-time push updates or websocket connections in Phase 1; all data is fetched on navigation or manual refresh"
+  - "This node does not implement voice AI call interfaces (Phase 2 feature)"
+  - "This node does not implement PDF or CSV export of tables or reports in Phase 1"
+  - "This node does not implement dark mode in Phase 1"
+  - "This node does not own or store any data; it is a pure presentation layer that reads and writes exclusively through the typed API client"
+  - "This node does not implement multi-tab or multi-window synchronization of session state"
+
+failure_modes:
+  - "getSession() used instead of getUser() in a server component — Supabase deprecation causes silent auth bypass; server renders page with stale cookie data without re-validating with Supabase Auth server"
+  - "TanStack Table configured with manualPagination: false — table attempts client-side pagination of the first page of server data, silently hiding all rows beyond page_size=50 from the user"
+  - "nuqs not integrated with TanStack Table state — filter/sort state is lost on page refresh, causing coordinators to re-apply filters repeatedly and losing place in the queue"
+  - "API client not regenerated after FastAPI schema change — typed client references a deleted or renamed endpoint, causing runtime TypeScript errors that were not caught at build time"
+  - "STATUS_CONFIG map defined without exhaustiveness check — a new status added to the backend enum renders as an unstyled blank badge in the UI, making cases invisible in the queue"
+  - "shadcn/ui Drawer used instead of Sheet for quick-edit — Drawer has different animation and focus-trap behavior that conflicts with the dense table layout, causing accessibility and UX regressions"
+  - "Import commit button not gated on ImportJob.status=ready — coordinators trigger commit on partially-validated imports, creating cases with incomplete or invalid data"
+  - "Re-match confirmation modal bypassed — coordinator accidentally re-generates matches, clearing all selected facilities mid-workflow without warning, losing outreach preparation work"
+  - "Select For Outreach contextual prompt omitted — coordinator selects facilities but does not realize they must navigate to the Outreach tab to create drafts, leaving cases stuck in facility_options_generated state"
+  - "react-hook-form not integrated with Zod for clinical assessment — form submits invalid data (e.g. dialysis_type=null when dialysis_required=true) that passes frontend validation but is rejected by the backend with a 422, showing a generic error"
+
+file_scope: "frontend/**"
+depends_on:
+  - auth-module
+  - intake-module
+  - clinical-module
+  - facilities-module
+  - matching-module
+  - outreach-module
+  - outcomes-module
+  - analytics-module
+  - admin-surfaces

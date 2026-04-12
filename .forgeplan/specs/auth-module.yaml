@@ -1,0 +1,170 @@
+node: "auth-module"
+name: "Auth Module"
+spec_type: "prescriptive"
+description: >
+  Supabase Auth integration providing login, session introspection, and logout endpoints.
+  POST /auth/login delegates credential validation to Supabase Auth and returns a JWT
+  session. GET /auth/me returns the authenticated user profile with organization_id and
+  role_key sourced from the User row. POST /auth/logout invalidates the Supabase session.
+  Enforces a 6-role RBAC permission matrix (admin, intake_staff, clinical_reviewer,
+  placement_coordinator, manager, read_only) via reusable role-guard Depends() that all
+  other modules import. Rate limits the login endpoint to 10 attempts per minute per IP
+  using in-process middleware; returns HTTP 429 on breach. The read_only role is
+  enforced globally: all POST, PATCH, and DELETE requests from a read_only user return
+  HTTP 403 without reaching handler logic. Organization assignment is set in
+  app_metadata (not user_metadata) at user provisioning time. The user_roles table is
+  seeded with 6 canonical role definitions; role_key on the User profile row is
+  authoritative for Phase 1 permission checks.
+
+inputs:
+  - name: "LoginRequest body"
+    type: "LoginRequest"
+    required: true
+    validation: "email must be a valid RFC 5322 address; password must be non-empty string; both fields required"
+  - name: "Authorization header (Bearer token)"
+    type: "string"
+    required: true
+    validation: "Required on GET /auth/me and POST /auth/logout; validated by core-infrastructure JWT middleware; 401 if absent or expired"
+  - name: "X-Forwarded-For / client IP"
+    type: "string"
+    required: false
+    validation: "Used for per-IP rate limiting on POST /auth/login; falls back to direct connection remote_addr if header absent"
+  - name: "SUPABASE_URL"
+    type: "string"
+    required: true
+    validation: "Non-empty HTTPS URL to the Supabase project; used to call Supabase Auth REST API"
+  - name: "SUPABASE_ANON_KEY"
+    type: "string"
+    required: true
+    validation: "Non-empty string; Supabase anon key used in Auth API calls"
+
+outputs:
+  - name: "POST /api/v1/auth/login response"
+    type: "LoginResponse"
+  - name: "GET /api/v1/auth/me response"
+    type: "$shared.User profile JSON"
+  - name: "POST /api/v1/auth/logout response"
+    type: "HTTP 204 No Content"
+  - name: "require_role Depends() factory"
+    type: "FastAPI Depends() callable — raises 403 if caller role not in allowed set"
+  - name: "require_write_permission Depends()"
+    type: "FastAPI Depends() callable — raises 403 for read_only role on any mutating request"
+  - name: "RolePermissions mapping"
+    type: "RolePermissions — dict of role_key to allowed action set; importable by all modules"
+
+shared_dependencies:
+  - User
+  - AuditEvent
+
+data_models:
+  LoginRequest:
+    email: "str"
+    password: "str"
+  LoginResponse:
+    access_token: "str"
+    token_type: "str — always 'bearer'"
+    expires_in: "int — seconds until expiry"
+    user_id: "uuid"
+    organization_id: "uuid"
+    role_key: "str"
+  RolePermissions:
+    role_key: "str"
+    allowed_actions: "list[str]"
+
+interfaces:
+  - target_node: "core-infrastructure"
+    type: "outbound"
+    contract: "Provides AuthContext via get_auth_context Depends(); exposes User ORM model and AsyncSessionLocal; auth-module reads/writes User rows via shared session"
+  - target_node: "intake-module"
+    type: "outbound"
+    contract: "Exports require_role and require_write_permission Depends() callables; intake-module imports these to gate intake_staff and admin access to case creation and intake-complete endpoints"
+  - target_node: "clinical-module"
+    type: "outbound"
+    contract: "Exports require_role Depends(); clinical-module imports to restrict assessment creation and finalization to clinical_reviewer and admin"
+  - target_node: "facilities-module"
+    type: "outbound"
+    contract: "Exports require_role Depends(); facilities-module imports to restrict facility create/update to admin and capability updates to admin or placement_coordinator"
+  - target_node: "matching-module"
+    type: "outbound"
+    contract: "Exports require_role Depends(); matching-module imports to gate match generation to placement_coordinator, clinical_reviewer, and admin"
+  - target_node: "outreach-module"
+    type: "outbound"
+    contract: "Exports require_role Depends(); outreach-module imports to restrict outreach approval to placement_coordinator and admin; drafting and all mutations also restricted to placement_coordinator and admin"
+  - target_node: "outcomes-module"
+    type: "outbound"
+    contract: "Exports require_role Depends(); outcomes-module imports to restrict outcome recording to placement_coordinator and admin"
+  - target_node: "analytics-module"
+    type: "outbound"
+    contract: "Exports require_role Depends(); analytics-module imports to restrict /queues/operations to placement_coordinator, clinical_reviewer, manager, and admin; all other analytics endpoints (dashboard, manager-summary, outreach-performance) restricted to manager and admin only; read_only and intake_staff receive 403 on all analytics endpoints"
+  - target_node: "admin-surfaces"
+    type: "outbound"
+    contract: "Exports require_role Depends(); admin-surfaces imports to restrict all endpoints to admin role only; all other roles including read_only receive 403 on all admin-surfaces endpoints"
+
+acceptance_criteria:
+  - id: AC1
+    description: "POST /api/v1/auth/login with valid credentials returns HTTP 200 with a LoginResponse containing access_token, token_type=bearer, expires_in, user_id, organization_id, and role_key"
+    test: "pytest: test_login.py — POST /api/v1/auth/login with seeded user credentials; assert HTTP 200; assert response body contains all LoginResponse fields; assert access_token is a non-empty string decodable as a JWT"
+  - id: AC2
+    description: "POST /api/v1/auth/login with invalid credentials returns HTTP 401"
+    test: "pytest: POST /api/v1/auth/login with wrong password; assert HTTP 401 and no token in response body"
+  - id: AC3
+    description: "POST /api/v1/auth/login is rate-limited to 10 attempts per minute per IP; the 11th request within one minute returns HTTP 429"
+    test: "pytest: test_rate_limit.py — send 10 POST /api/v1/auth/login requests from the same mock IP within one minute; assert first 10 return 401 or 200; send an 11th and assert HTTP 429 with Retry-After header"
+  - id: AC4
+    description: "GET /api/v1/auth/me returns the authenticated user's profile including organization_id and role_key"
+    test: "pytest: test_me.py — obtain valid JWT from login; GET /api/v1/auth/me with Authorization: Bearer <token>; assert HTTP 200; assert response contains user_id, organization_id, role_key, email, full_name"
+  - id: AC5
+    description: "POST /api/v1/auth/logout invalidates the Supabase session and returns HTTP 204"
+    test: "pytest: test_logout.py — login to obtain token; POST /api/v1/auth/logout with that token; assert HTTP 204; attempt GET /api/v1/auth/me with same token and assert HTTP 401"
+  - id: AC6
+    description: "intake_staff role: can create/edit cases and mark intake complete; cannot access clinical, matching, analytics, or admin endpoints; returns 403 on prohibited actions"
+    test: "pytest: test_rbac.py::test_intake_staff — authenticate as intake_staff; assert 201 on POST /api/v1/cases; assert 403 on POST /api/v1/cases/{id}/assessments; assert 403 on GET /api/v1/analytics/dashboard; assert 403 on GET /api/v1/queues/operations; assert 403 on POST /api/v1/admin/users"
+  - id: AC7
+    description: "clinical_reviewer role: can create and finalize assessments and make backward transitions; can access GET /api/v1/queues/operations; cannot approve outreach, record outcomes, access analytics dashboard or admin endpoints"
+    test: "pytest: test_rbac.py::test_clinical_reviewer — authenticate as clinical_reviewer; assert 201 on POST /api/v1/cases/{id}/assessments; assert 403 on POST /api/v1/outreach-actions/{id}/approve; assert 403 on POST /api/v1/outcomes; assert 403 on GET /api/v1/analytics/dashboard; assert 200 on GET /api/v1/queues/operations; assert 403 on POST /api/v1/admin/users"
+  - id: AC8
+    description: "placement_coordinator role: can generate matches, approve outreach, select facilities, log outcomes, and access GET /api/v1/queues/operations; cannot access analytics dashboard, admin endpoints"
+    test: "pytest: test_rbac.py::test_placement_coordinator — authenticate as placement_coordinator; assert 200 on POST /api/v1/cases/{id}/generate-matches; assert 403 on POST /api/v1/admin/users; assert 403 on GET /api/v1/analytics/dashboard; assert 200 on GET /api/v1/queues/operations"
+  - id: AC9
+    description: "manager role: can read all data, view queues, view analytics, and close cases; cannot manage users, edit facilities, or approve outreach"
+    test: "pytest: test_rbac.py::test_manager — authenticate as manager; assert 200 on GET /api/v1/analytics; assert 200 on GET /api/v1/cases; assert 403 on POST /api/v1/admin/users; assert 403 on PATCH /api/v1/facilities/{id}; assert 403 on POST /api/v1/outreach-actions/{id}/approve"
+  - id: AC10
+    description: "admin role: has full access to all endpoints across all modules"
+    test: "pytest: test_rbac.py::test_admin — authenticate as admin; assert 2xx on representative endpoints from each module: POST /api/v1/cases, POST /api/v1/assessments, POST /api/v1/facilities, POST /api/v1/admin/users, GET /api/v1/analytics"
+  - id: AC11
+    description: "read_only role: GET on cases/facilities/clinical endpoints returns data; all analytics and admin GET endpoints return 403; all POST, PATCH, and DELETE requests return HTTP 403 without executing handler logic"
+    test: "pytest: test_rbac.py::test_read_only — authenticate as read_only; assert 200 on GET /api/v1/cases; assert 200 on GET /api/v1/facilities; assert 403 on GET /api/v1/queues/operations; assert 403 on GET /api/v1/analytics/dashboard; assert 403 on POST /api/v1/cases; assert 403 on PATCH /api/v1/cases/{id}; assert 403 on DELETE /api/v1/facilities/{id}; use a mock to confirm handler was never called"
+  - id: AC12
+    description: "user_roles table is seeded with all 6 role definitions; role_key on User row is the authoritative source for permission checks"
+    test: "After seed: `SELECT count(*) FROM user_roles WHERE role_key IN ('admin','intake_staff','clinical_reviewer','placement_coordinator','manager','read_only')` returns 6; confirm permission check code path reads from AuthContext.role_key (from User row) not from JWT claims directly"
+  - id: AC13
+    description: "Login action writes an AuditEvent row with entity_type=user, event_type=login, actor_user_id set to the authenticated user"
+    test: "pytest: after successful login call, query audit_events for event_type=login and actor_user_id matching the logged-in user; assert one row present with correct organization_id"
+
+constraints:
+  - "organization_id must be provisioned into app_metadata (not user_metadata) when creating users; the JWT middleware in core-infrastructure reads from app_metadata"
+  - "Rate limiting on POST /auth/login must be per-IP (X-Forwarded-For preferred, fallback to remote_addr) and must not share state with any other rate-limit counter"
+  - "require_write_permission Depends() must intercept the request before the handler body executes — no partial writes may occur before the 403 is returned for read_only"
+  - "Role checks must use AuthContext.role_key populated from the User database row (via core-infrastructure get_auth_context) — not from raw JWT claims, which could be stale"
+  - "The read_only role must return HTTP 403 (not 401) so the client can distinguish authenticated-but-unauthorized from unauthenticated"
+  - "Logout must call Supabase Auth signOut to server-side invalidate the token; client-side token deletion alone is insufficient"
+  - "All auth endpoints must be registered under the /api/v1/auth prefix"
+
+non_goals:
+  - "This node does not implement user provisioning or invitation flows — user creation is handled by admin-surfaces"
+  - "This node does not implement password reset or email verification flows — these are delegated to Supabase Auth built-in flows"
+  - "This node does not store or rotate JWT secrets — secret management is an infrastructure concern"
+  - "This node does not implement multi-factor authentication in Phase 1"
+  - "This node does not implement per-resource ownership checks — those live in each feature module"
+
+failure_modes:
+  - "Role permissions read from stale JWT claims instead of User database row — role_key changes (e.g., demotion) do not take effect until token expiry, leaving elevated access active"
+  - "organization_id set in user_metadata at provisioning time — users can self-modify user_metadata via Supabase client SDK and assign themselves to any organization"
+  - "Rate limiter uses a process-local counter without distributed state — multiple API instances share no state, allowing 10 * N attempts per minute across N instances"
+  - "require_write_permission Depends() applied only to some routes — read_only users can write to unguarded endpoints"
+  - "Logout does not call Supabase server-side signOut — revoked sessions remain valid until natural expiry, enabling session replay attacks"
+  - "Login endpoint does not write AuditEvent — login activity is untracked, violating HIPAA audit requirements"
+
+file_scope: "placementops/modules/auth/**"
+depends_on:
+  - "core-infrastructure"

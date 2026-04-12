@@ -1,0 +1,56 @@
+{
+  "node_id": "core-infrastructure",
+  "status": "reviewed",
+  "node_type": "database",
+  "file_count": 62,
+  "test_file_count": 0,
+  "dependency_count": 0,
+  "connection_count": 9,
+  "entrypoints": [],
+  "hotspot_files": [],
+  "recent_findings": [
+    {
+      "pass": "review",
+      "agent": "reviewer",
+      "finding": "AC8 (partial)",
+      "resolution": "`placementops/core/` (entire scope)",
+      "file": null
+    },
+    {
+      "pass": "review",
+      "agent": "reviewer",
+      "finding": "3",
+      "resolution": "AC10 (partial)",
+      "file": null
+    }
+  ],
+  "decision_ids": [
+    "D-core-4-select-for-update",
+    "D-core-1-nullpool-supavisor",
+    "D-core-2-jwt-alg-detection"
+  ],
+  "constraints": [
+    "Use PyJWT[cryptography] for JWT validation — NOT python-jose (abandoned library)",
+    "JWT middleware must handle both HS256 (SUPABASE_JWT_SECRET) and ES256 (JWKS endpoint) algorithms; algorithm is determined from token header",
+    "organization_id MUST be extracted from app_metadata in the JWT claims, never from user_metadata",
+    "AsyncSessionLocal must be created with expire_on_commit=False",
+    "Application pool must use NullPool and statement_cache_size=0 (Supavisor transaction pooling compatibility)",
+    "Alembic migrations must use DATABASE_DIRECT_URL (port 5432); application queries must use DATABASE_URL (port 6543)",
+    "AuditEvent ORM model must expose no update() or delete() methods; only Session.add() for inserts",
+    "RLS UPDATE policies must have a corresponding SELECT policy; both must use auth.jwt() -> 'app_metadata' ->> 'organization_id'",
+    "transition_case_status handler is the single authoritative gatekeeper for all status transitions — no module may bypass it",
+    "Closed-case guard must execute before handler logic to prevent partial writes before rejection"
+  ],
+  "shared_models": [],
+  "cross_refs": [
+    "Connected to: auth-module",
+    "Connected to: intake-module",
+    "Connected to: clinical-module",
+    "Connected to: facilities-module",
+    "Connected to: matching-module",
+    "Connected to: outreach-module",
+    "Connected to: outcomes-module",
+    "Connected to: analytics-module",
+    "Connected to: admin-surfaces"
+  ]
+}

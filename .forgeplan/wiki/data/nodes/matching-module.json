@@ -1,0 +1,41 @@
+{
+  "node_id": "matching-module",
+  "status": "reviewed",
+  "node_type": "service",
+  "file_count": 15,
+  "test_file_count": 0,
+  "dependency_count": 4,
+  "connection_count": 5,
+  "entrypoints": [],
+  "hotspot_files": [],
+  "recent_findings": [],
+  "decision_ids": [
+    "D-matching-1-haversine-step-function",
+    "D-matching-2-lru-cache-zip-lookup"
+  ],
+  "constraints": [
+    "Hard exclusions are binary gates. An excluded facility must never receive a non-zero overall_score and must never appear in the ranked (non-excluded) portion of results, regardless of how strong its other component scores are.",
+    "All scoring must be framed as decision support for human coordinators. The matching engine must not make or communicate automated placement determinations. Explanation text must include language such as 'suggested' or 'recommended for review' rather than 'approved' or 'selected' (nH Predict lawsuit compliance).",
+    "The haversine library (MIT license) must be used for distance calculation. Facility coordinates from the Facility model (lat/lng) are the authoritative distance input.",
+    "The zipcodes library (MIT license) must be used for ZIP→lat/lng resolution with @lru_cache on the lookup function to avoid redundant I/O per scoring run.",
+    "geography_score=0.0 is never a hard exclusion. A facility with unknown distance is still eligible for placement.",
+    "Explanation text must be generated once at match write time and stored verbatim in FacilityMatch.explanation_text. It must never be dynamically regenerated on GET requests.",
+    "Re-scoring (POST generate when FacilityMatch records already exist) must not overwrite or delete old FacilityMatch rows. New rows are inserted with the current generated_at timestamp. Old rows are retained.",
+    "selected_for_outreach must not be carried forward from a previous match generation run. All new FacilityMatch rows start with selected_for_outreach=false.",
+    "All PatientCase status transitions must be delegated to core-infrastructure's shared status-transition handler.",
+    "organization_id tenant isolation enforced on every facility read and every FacilityMatch read/write.",
+    "dialysis_type=hd with in_house_hd_required=true requires BOTH accepts_hd=true AND in_house_hemodialysis=true; failing either flag is a hard exclusion."
+  ],
+  "shared_models": [],
+  "cross_refs": [
+    "Depends on: core-infrastructure",
+    "Depends on: auth-module",
+    "Depends on: clinical-module",
+    "Depends on: facilities-module",
+    "Connected to: core-infrastructure",
+    "Connected to: auth-module",
+    "Connected to: clinical-module",
+    "Connected to: facilities-module",
+    "Connected to: outreach-module"
+  ]
+}

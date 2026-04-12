@@ -1,0 +1,191 @@
+node: "matching-module"
+name: "Matching Module"
+spec_type: "prescriptive"
+description: >
+  Weighted rules engine that scores all active facilities in the organization
+  against a patient's latest finalized ClinicalAssessment. Runs a strict
+  four-stage pipeline: Retrieve (all active facilities) → Exclude (hard
+  exclusions are gates, not low scores; excluded facilities never appear
+  alongside scored facilities in ranked results) → Score (payer_fit 35%,
+  clinical_fit 30%, level_of_care 20%, geography 10%, preference 5%) → Rank
+  (overall_score 0–100, blocked facilities assigned rank_order=-1 at bottom).
+  All component scores stored separately for auditability.
+  Geography computed with haversine against patient_zip→lat/lng via zipcodes
+  library with LRU cache; null ZIP or null facility coordinates yields
+  geography_score=0.0 (not an exclusion). Explanation text generated at write
+  time and stored verbatim; never regenerated on read. Coordinators select one
+  or more facilities for outreach; re-scoring does not carry forward selections.
+  All scoring framed as decision support only — never automated determination
+  (nH Predict lawsuit compliance).
+
+inputs:
+  - name: "case_id"
+    type: "uuid"
+    required: true
+    validation: "Must reference a PatientCase with current_status=ready_for_matching or facility_options_generated; closed cases return 409"
+  - name: "assessment_id"
+    type: "uuid"
+    required: false
+    validation: "When provided, must reference a ClinicalAssessment with review_status=finalized for the given case_id; when omitted, engine resolves latest finalized assessment automatically; returns 400 if no finalized assessment exists"
+  - name: "match_id"
+    type: "uuid"
+    required: false
+    validation: "Used only by PATCH .../select; must reference a FacilityMatch belonging to the given case_id"
+  - name: "actor_user_id"
+    type: "uuid"
+    required: true
+    validation: "Must reference a User with role_key in [clinical_reviewer, placement_coordinator, admin]; returns 403 otherwise"
+
+outputs:
+  - name: "facility_matches"
+    type: "list[$shared.FacilityMatch]"
+  - name: "selected_match"
+    type: "$shared.FacilityMatch"
+  - name: "case_status"
+    type: "string"
+  - name: "audit_event"
+    type: "$shared.AuditEvent"
+
+shared_dependencies:
+  - FacilityMatch
+  - ClinicalAssessment
+  - Facility
+  - FacilityCapabilities
+  - FacilityInsuranceRule
+  - PatientCase
+  - User
+  - AuditEvent
+
+data_models:
+  ScoringContext:
+    case_id: uuid
+    assessment_id: uuid
+    patient_zip: "string — nullable"
+    patient_lat: "float — nullable, resolved from patient_zip via zipcodes+lru_cache"
+    patient_lng: "float — nullable, resolved from patient_zip via zipcodes+lru_cache"
+    recommended_level_of_care: "string — enum: snf | irf | ltach"
+    primary_payer: string
+  ComponentScores:
+    level_of_care_fit_score: "float — 0.0–1.0"
+    payer_fit_score: "float — 0.0–1.0"
+    clinical_fit_score: "float — 0.0–1.0"
+    geography_score: "float — 0.0–1.0"
+    preference_score: "float — 0.0–1.0"
+    overall_score: "float — 0.0–100.0"
+  BlockerDetail:
+    field: string
+    reason: string
+  HardExclusionResult:
+    facility_id: uuid
+    excluded: boolean
+    blockers: "list[BlockerDetail]"
+
+interfaces:
+  - target_node: "core-infrastructure"
+    type: "outbound"
+    contract: "Provides FacilityMatch, ClinicalAssessment, Facility, FacilityCapabilities, FacilityInsuranceRule ORM models, transition_case_status, AsyncSessionLocal, and get_auth_context"
+  - target_node: "auth-module"
+    type: "outbound"
+    contract: "Exports require_role Depends(); matching-module imports to gate match generation to placement_coordinator, clinical_reviewer, and admin"
+  - target_node: "clinical-module"
+    type: "outbound"
+    contract: "Exposes latest finalized ClinicalAssessment (by created_at desc, review_status=finalized) for the case; matching-module reads this to build the hard-exclusion set and scoring inputs"
+  - target_node: "facilities-module"
+    type: "outbound"
+    contract: "matching-module reads FacilityCapabilities (all 18 boolean flags) and FacilityInsuranceRule records to perform hard-exclusion scoring; field names must exactly mirror ClinicalAssessment for direct lookup"
+  - target_node: "outreach-module"
+    type: "outbound"
+    contract: "selected_for_outreach flag on FacilityMatch is read by outreach-module to determine which facilities to target; matching-module owns writes to this flag via PATCH .../select"
+
+acceptance_criteria:
+  - id: AC1
+    description: "POST /api/v1/cases/{case_id}/matches/generate requires a finalized ClinicalAssessment and returns 400 when none exists"
+    test: "Seed case at ready_for_matching with no finalized assessment; POST generate; assert HTTP 400 with message indicating missing finalized assessment; assert no FacilityMatch rows created"
+  - id: AC2
+    description: "Match generation stores FacilityMatch records for all active facilities and advances case to facility_options_generated"
+    test: "Seed 10 active facilities and 2 inactive; POST generate; assert FacilityMatch rows created only for the 10 active facilities; assert PatientCase.current_status=facility_options_generated"
+  - id: AC3
+    description: "Hard exclusions for payer produce a blocked FacilityMatch with blockers_json and rank_order=-1"
+    test: "Seed facility with FacilityInsuranceRule.accepted_status=not_accepted for patient's primary payer; POST generate; assert that facility's FacilityMatch has blockers_json containing payer exclusion reason, overall_score=0, rank_order=-1; assert it is not present in the ranked (non-blocked) result set"
+  - id: AC4
+    description: "Hard exclusions apply correctly for all 13 clinical capability field mappings"
+    test: "For each mapping (trach→accepts_trach, vent→accepts_vent, dialysis_type=hd→accepts_hd, dialysis_type=hd with in_house_hd_required→in_house_hemodialysis, dialysis_type=peritoneal→accepts_peritoneal_dialysis, wound_vac_needs→accepts_wound_vac, oxygen_required→accepts_oxygen_therapy, memory_care_needed→accepts_memory_care, bariatric_needs→accepts_bariatric, iv_antibiotics→accepts_iv_antibiotics, tpn→accepts_tpn, isolation_precautions→accepts_isolation_cases, behavioral_complexity_flag→accepts_behavioral_complexity): set assessment flag=true and corresponding FacilityCapabilities flag=false; POST generate; assert facility is hard-excluded with correct field name in blockers_json"
+  - id: AC5
+    description: "Hard exclusions are gates: excluded facilities must never appear in the ranked scored list alongside non-excluded facilities"
+    test: "Seed mix of excluded and non-excluded facilities; POST generate; GET matches; assert excluded facilities all have rank_order=-1 and appear only after all ranked facilities in the response; assert no excluded facility has a non-negative overall_score"
+  - id: AC6
+    description: "Scoring weights are applied correctly: payer_fit 35%, clinical_fit 30%, level_of_care 20%, geography 10%, preference 5%"
+    test: "Seed a facility with known component scores; assert overall_score = (payer_fit_score*0.35 + clinical_fit_score*0.30 + level_of_care_fit_score*0.20 + geography_score*0.10 + preference_score*0.05) * 100, within floating-point tolerance of 0.001"
+  - id: AC7
+    description: "Level of care adjacency scoring: exact match=1.0, one step adjacent=0.7, two steps=0.4"
+    test: "Recommended LOC=irf; facility accepts_irf→level_of_care_fit_score=1.0; facility accepts_snf only (one step)→0.7; facility accepts_ltach only (two steps from irf if ordering is snf<irf<ltach)→check adjacency table; assert scores match spec"
+  - id: AC8
+    description: "Payer fit scoring: in-network=1.0, conditional=0.5, not_accepted=hard exclusion (never scored)"
+    test: "Seed three facilities with accepted, conditional, not_accepted rules for patient payer; POST generate; assert accepted facility payer_fit_score=1.0, conditional facility payer_fit_score=0.5, not_accepted facility is hard-excluded with no payer_fit_score"
+  - id: AC9
+    description: "Geography score uses haversine step function: <=10mi=1.0, <=25mi=0.7, <=50mi=0.4, >50mi=0.1; null patient_zip or null facility coordinates yields geography_score=0.0 without excluding the facility"
+    test: "Seed facilities at known distances (5mi, 15mi, 35mi, 75mi) using known lat/lng coordinates; POST generate; assert geography_scores are 1.0, 0.7, 0.4, 0.1 respectively within tolerance 0.001; then seed case with null patient_zip; assert geography_score=0.0 for all facilities and none are excluded"
+  - id: AC10
+    description: "All component scores stored separately on FacilityMatch for auditability"
+    test: "POST generate; GET matches; assert each non-excluded FacilityMatch has non-null level_of_care_fit_score, payer_fit_score, clinical_fit_score, geography_score, preference_score stored as distinct fields"
+  - id: AC11
+    description: "explanation_text is generated at write time and stored verbatim; GET matches returns stored text unchanged"
+    test: "POST generate; capture explanation_text from DB; GET matches; assert returned explanation_text is byte-for-byte identical to stored value; update a facility capability and GET matches again without re-generating; assert explanation_text has not changed"
+  - id: AC12
+    description: "is_recommended flag set on top 3 highest-scored non-blocked facilities"
+    test: "POST generate with 10+ non-excluded facilities; assert exactly 3 FacilityMatch records have is_recommended=true; assert those 3 have the highest overall_score values among non-excluded matches"
+  - id: AC13
+    description: "GET /api/v1/cases/{case_id}/matches returns the latest match set with full scoring breakdown"
+    test: "POST generate twice (re-score); GET matches; assert response reflects second generation's generated_at; assert all component scores, blockers_json, explanation_text, rank_order, is_recommended present in response"
+  - id: AC14
+    description: "PATCH .../matches/{match_id}/select toggles selected_for_outreach; multiple facilities may be selected simultaneously"
+    test: "POST generate; PATCH select on facility A; assert selected_for_outreach=true, case_activity_event written; PATCH select on facility B; assert both A and B have selected_for_outreach=true; PATCH select on A again; assert A deselected, B still selected"
+  - id: AC15
+    description: "Re-scoring creates a new match set with new generated_at; selected_for_outreach state is NOT carried forward"
+    test: "POST generate; PATCH select on facility A; POST generate again; GET matches; assert new generated_at > old; assert selected_for_outreach=false for all matches in new set; assert old match records still present in DB with original generated_at"
+  - id: AC16
+    description: "intake_staff and read_only roles cannot trigger match generation or select facilities"
+    test: "Authenticate as intake_staff; POST generate; assert HTTP 403; authenticate as read_only; PATCH select; assert HTTP 403"
+  - id: AC17
+    description: "preference_score bonus applied for facilities in facility_preferences matching case hospital or org scope"
+    test: "Seed facility in facility_preferences for case's hospital_id; seed second facility not in preferences; POST generate; assert preferred facility has higher preference_score than non-preferred facility"
+
+constraints:
+  - "Hard exclusions are binary gates. An excluded facility must never receive a non-zero overall_score and must never appear in the ranked (non-excluded) portion of results, regardless of how strong its other component scores are."
+  - "All scoring must be framed as decision support for human coordinators. The matching engine must not make or communicate automated placement determinations. Explanation text must include language such as 'suggested' or 'recommended for review' rather than 'approved' or 'selected' (nH Predict lawsuit compliance)."
+  - "The haversine library (MIT license) must be used for distance calculation. Facility coordinates from the Facility model (lat/lng) are the authoritative distance input."
+  - "The zipcodes library (MIT license) must be used for ZIP→lat/lng resolution with @lru_cache on the lookup function to avoid redundant I/O per scoring run."
+  - "geography_score=0.0 is never a hard exclusion. A facility with unknown distance is still eligible for placement."
+  - "Explanation text must be generated once at match write time and stored verbatim in FacilityMatch.explanation_text. It must never be dynamically regenerated on GET requests."
+  - "Re-scoring (POST generate when FacilityMatch records already exist) must not overwrite or delete old FacilityMatch rows. New rows are inserted with the current generated_at timestamp. Old rows are retained."
+  - "selected_for_outreach must not be carried forward from a previous match generation run. All new FacilityMatch rows start with selected_for_outreach=false."
+  - "All PatientCase status transitions must be delegated to core-infrastructure's shared status-transition handler."
+  - "organization_id tenant isolation enforced on every facility read and every FacilityMatch read/write."
+  - "dialysis_type=hd with in_house_hd_required=true requires BOTH accepts_hd=true AND in_house_hemodialysis=true; failing either flag is a hard exclusion."
+
+non_goals:
+  - "This module does not send outreach communications. Facility selection (selected_for_outreach) is the boundary; outreach drafting and delivery is owned by outreach-module."
+  - "This module does not create or edit ClinicalAssessment records. Assessment authorship is owned by clinical-module."
+  - "This module does not manage Facility or FacilityCapabilities records. Facility data CRUD is owned by facilities-module."
+  - "This module does not perform AI or LLM-based scoring. All scoring is deterministic rules-based logic."
+  - "This module does not record placement outcomes. Outcome tracking is owned by outcomes-module."
+  - "This module does not generate analytics reports or aggregations. Analytics is owned by analytics-module."
+
+failure_modes:
+  - "A missing null-check for patient_zip causes a zipcodes lookup to raise an exception instead of returning geography_score=0.0, crashing the entire scoring run and producing zero FacilityMatch records."
+  - "The payer not_accepted exclusion check is implemented as a low score (0.0) rather than a hard gate, allowing a not_accepted payer facility to appear in ranked results and be selected for outreach."
+  - "explanation_text is generated dynamically on GET instead of stored at write time, causing it to reflect the current state of facility capabilities rather than the state at the time of scoring, silently misleading coordinators."
+  - "Re-scoring deletes old FacilityMatch rows before inserting new ones, destroying the historical record and violating auditability requirements."
+  - "The dialysis_type=hd hard-exclusion check tests only accepts_hd and ignores in_house_hemodialysis when in_house_hd_required=true, placing a patient requiring in-house HD at a facility that only supports outpatient HD."
+  - "selected_for_outreach values from a previous match run are copied into new FacilityMatch rows, causing the coordinator to unknowingly send outreach based on stale scoring data."
+  - "The weighted sum formula applies weights that do not sum to 1.0 (e.g. a rounding error makes weights sum to 1.01), causing overall_score to exceed 100 for top-ranked facilities and breaking any downstream display logic that clamps to 0–100."
+  - "Tenant isolation is omitted from the facility retrieval query, causing a scoring run to include facilities from other organizations in the match results."
+  - "The re-score warning ('Re-generating matches will clear your current selections') is enforced only on the frontend with no server-side acknowledgement token, allowing a direct API call to silently clear selections without the coordinator being informed."
+
+file_scope: "placementops/modules/matching/**"
+
+depends_on:
+  - "core-infrastructure"
+  - "auth-module"
+  - "clinical-module"
+  - "facilities-module"

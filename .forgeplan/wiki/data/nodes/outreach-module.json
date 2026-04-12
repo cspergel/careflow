@@ -1,0 +1,40 @@
+{
+  "node_id": "outreach-module",
+  "status": "reviewed",
+  "node_type": "service",
+  "file_count": 10,
+  "test_file_count": 0,
+  "dependency_count": 3,
+  "connection_count": 5,
+  "entrypoints": [],
+  "hotspot_files": [],
+  "recent_findings": [],
+  "decision_ids": [
+    "D-outreach-1-sandboxed-env",
+    "D-outreach-2-system-role-advance",
+    "D-outreach-4-bypass-atomicity",
+    "D-outreach-3-405-explicit-handlers"
+  ],
+  "constraints": [
+    "Template variable substitution MUST use Jinja2 SandboxedEnvironment (not bare Environment); any template expression referencing names outside the allowlist [patient_name, facility_name, payer_name, assessment_summary, coordinator_name] MUST be rejected with 400 before rendering",
+    "Email body content (draft_body, draft_subject) MUST NOT appear in AuditEvent new_value_json or any log output; only metadata (action_id, sent_at, sent_by_user_id, delivery_status) may be recorded",
+    "Sending is a permanent record; approval_status=sent MUST NOT be transitioned to any other state; cancel endpoint MUST return 409 for sent records",
+    "phone_manual and task channel actions MUST be created at approval_status=sent in a single atomic write; no intermediate draft/pending_approval/approved rows are permitted for these channels",
+    "The atomic case advance for phone_manual/task MUST use the shared state-machine transition handler; the module MUST NOT write PatientCase.current_status directly",
+    "All mutating endpoints (POST, PATCH) MUST reject requests where case.current_status=closed with 409 (enforced by core-infrastructure middleware, verified here)",
+    "Template CRUD (POST/PATCH/DELETE on /templates/outreach) is forbidden in this module; only GET is permitted",
+    "organization_id scoping MUST be applied to all queries; cross-tenant data MUST never be returned",
+    "Only placement_coordinator or admin roles may create, edit, submit, approve, send, or cancel outreach actions"
+  ],
+  "shared_models": [],
+  "cross_refs": [
+    "Depends on: core-infrastructure",
+    "Depends on: auth-module",
+    "Depends on: matching-module",
+    "Connected to: core-infrastructure",
+    "Connected to: auth-module",
+    "Connected to: matching-module",
+    "Connected to: outcomes-module",
+    "Connected to: admin-surfaces"
+  ]
+}

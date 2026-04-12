@@ -1,0 +1,187 @@
+node: "core-infrastructure"
+name: "Core Infrastructure"
+spec_type: "prescriptive"
+description: >
+  Shared foundation for all modules. Defines SQLAlchemy ORM models for all 20+ database
+  tables (PatientCase, Facility, FacilityCapabilities, FacilityInsuranceRule, FacilityContact,
+  User, OutreachAction, OutreachTemplate, ClinicalAssessment, FacilityMatch, ImportJob,
+  PlacementOutcome, AuditEvent, plus reference tables). Provides Supabase JWT middleware
+  (supports HS256 and ES256/JWKS) that validates Bearer tokens and attaches AuthContext
+  (user_id, organization_id, role_key) to request.state via FastAPI Depends(). Enforces
+  organization_id tenant isolation at the application layer as defense-in-depth alongside
+  Supabase RLS policies (org_id stored in app_metadata, not user_metadata). Implements the
+  shared status-transition handler that enforces the state_machine_transitions allowlist
+  and checks caller role against permitted_roles. Provides the AuditEvent immutability
+  mechanism via a Postgres BEFORE UPDATE OR DELETE trigger that raises an exception, plus
+  an ORM insert-only pattern. Exposes the case_activity_events in-process event bus for
+  all case state transitions. Manages Alembic migrations (direct port 5432 for migrations,
+  transaction-mode port 6543 with NullPool and statement_cache_size=0 for the app pool)
+  and seed data (roles, reference tables). Exposes GET /api/v1/health. All modules import
+  shared models exclusively from this node.
+
+inputs:
+  - name: "DATABASE_URL"
+    type: "string"
+    required: true
+    validation: "Must be a valid PostgreSQL connection string using port 6543 (Supavisor transaction mode) for application pool"
+  - name: "DATABASE_DIRECT_URL"
+    type: "string"
+    required: true
+    validation: "Must be a valid PostgreSQL connection string using port 5432 (direct) for Alembic migrations"
+  - name: "SUPABASE_JWT_SECRET"
+    type: "string"
+    required: true
+    validation: "Non-empty string used for HS256 JWT verification; required even when ES256/JWKS is also configured"
+  - name: "SUPABASE_JWKS_URL"
+    type: "string"
+    required: false
+    validation: "Optional HTTPS URL to Supabase JWKS endpoint; enables ES256 token validation for new projects"
+  - name: "JWT Bearer token"
+    type: "string"
+    required: true
+    validation: "Authorization header value passed by caller on every protected request; must be non-expired and signed by Supabase"
+
+outputs:
+  - name: "AsyncSessionLocal"
+    type: "AsyncSession factory"
+  - name: "AuthContext"
+    type: "AuthContext dataclass"
+  - name: "get_auth_context"
+    type: "FastAPI Depends() callable returning AuthContext"
+  - name: "transition_case_status"
+    type: "callable — enforces allowlist and role; raises 400 or 403 on violation"
+  - name: "publish_case_activity_event"
+    type: "callable — emits event to case_activity_events bus"
+  - name: "Base"
+    type: "SQLAlchemy DeclarativeBase"
+  - name: "All ORM model classes"
+    type: "SQLAlchemy mapped classes for all 20+ tables"
+  - name: "GET /api/v1/health"
+    type: "HTTP 200 JSON response"
+
+shared_dependencies:
+  - PatientCase
+  - Facility
+  - FacilityCapabilities
+  - FacilityInsuranceRule
+  - FacilityContact
+  - User
+  - OutreachAction
+  - OutreachTemplate
+  - ClinicalAssessment
+  - FacilityMatch
+  - ImportJob
+  - PlacementOutcome
+  - AuditEvent
+  - CaseStatusHistory
+
+data_models:
+  AuthContext:
+    user_id: "uuid"
+    organization_id: "uuid"
+    role_key: "str — one of: admin | intake_staff | clinical_reviewer | placement_coordinator | manager | read_only"
+  CaseStatusTransition:
+    case_id: "uuid"
+    from_status: "str"
+    to_status: "str"
+    actor_role: "str"
+    actor_user_id: "uuid"
+    transition_reason: "str | None"
+
+interfaces:
+  - target_node: "auth-module"
+    type: "outbound"
+    contract: "Provides AuthContext via get_auth_context Depends(); exposes User ORM model and AsyncSessionLocal; auth-module reads/writes User rows via shared session"
+  - target_node: "intake-module"
+    type: "outbound"
+    contract: "Provides PatientCase, ImportJob ORM models, transition_case_status handler, publish_case_activity_event, AsyncSessionLocal, and get_auth_context"
+  - target_node: "clinical-module"
+    type: "outbound"
+    contract: "Provides ClinicalAssessment, PatientCase ORM models, transition_case_status handler, publish_case_activity_event, AsyncSessionLocal, and get_auth_context"
+  - target_node: "facilities-module"
+    type: "outbound"
+    contract: "Provides Facility, FacilityCapabilities, FacilityInsuranceRule, FacilityContact ORM models, AsyncSessionLocal, and get_auth_context"
+  - target_node: "matching-module"
+    type: "outbound"
+    contract: "Provides FacilityMatch, ClinicalAssessment, Facility, FacilityCapabilities, FacilityInsuranceRule ORM models, transition_case_status, AsyncSessionLocal, and get_auth_context"
+  - target_node: "outreach-module"
+    type: "outbound"
+    contract: "Provides OutreachAction, OutreachTemplate, FacilityContact ORM models, transition_case_status, AsyncSessionLocal, and get_auth_context"
+  - target_node: "outcomes-module"
+    type: "outbound"
+    contract: "Provides PlacementOutcome, PatientCase ORM models, transition_case_status, AsyncSessionLocal, and get_auth_context"
+  - target_node: "analytics-module"
+    type: "outbound"
+    contract: "Provides all ORM models as read-only access; analytics queries via AsyncSessionLocal"
+  - target_node: "admin-surfaces"
+    type: "outbound"
+    contract: "Provides User, ImportJob, AuditEvent, all reference table ORM models, AsyncSessionLocal, and get_auth_context"
+
+acceptance_criteria:
+  - id: AC1
+    description: "Alembic migrations create all 20+ tables with correct columns, data types, indexes, and FK constraints"
+    test: "Run `alembic upgrade head` against a blank Postgres database; then run `alembic check` to confirm no pending migrations; inspect schema with `psql -c '\\d+ patient_cases'` and assert all columns and FK constraints are present"
+  - id: AC2
+    description: "Database connection pool initializes successfully and GET /api/v1/health returns HTTP 200"
+    test: "Start the FastAPI app with valid DATABASE_URL; execute `curl -s http://localhost:8000/api/v1/health` and assert HTTP 200 with JSON body containing status=ok"
+  - id: AC3
+    description: "Valid Supabase JWT Bearer token is accepted; AuthContext with user_id, organization_id, and role_key is attached to request.state; requests with expired or missing tokens return HTTP 401"
+    test: "pytest: test_auth_middleware.py — (a) send request with valid HS256 JWT signed with SUPABASE_JWT_SECRET and assert AuthContext populated; (b) send request with expired JWT and assert 401; (c) send request with no Authorization header and assert 401; (d) if SUPABASE_JWKS_URL set, send request with valid ES256 JWT and assert AuthContext populated"
+  - id: AC4
+    description: "Requests using a valid token whose organization_id does not match the requested resource's organization_id return HTTP 403 with no data leakage"
+    test: "pytest: test_tenant_isolation.py — create two orgs (org_a, org_b); authenticate as org_a user; attempt GET /api/v1/cases/{case_id_from_org_b}; assert 403 and no org_b data in response body"
+  - id: AC5
+    description: "Supabase RLS policies enforce organization_id on all PHI tables using auth.jwt() -> 'app_metadata' ->> 'organization_id'"
+    test: "Using the Supabase service role client, insert a row for org_a into patient_cases; then execute a SELECT using an org_b JWT via the Supabase JS client and assert zero rows returned; verify the RLS policy SQL references app_metadata not user_metadata"
+  - id: AC6
+    description: "status-transition handler enforces allowlist: transitions not in state_machine_transitions return HTTP 400 with list of allowed transitions; caller's role is checked against permitted_roles and returns HTTP 403 if not permitted"
+    test: "pytest: test_transitions.py — (a) attempt transition new→placed (not in allowlist) and assert 400; (b) attempt transition new→intake_in_progress as clinical_reviewer (not in permitted_roles) and assert 403; (c) attempt new→intake_in_progress as intake_staff and assert 200 / state change committed"
+  - id: AC7
+    description: "AuditEvent Postgres trigger blocks UPDATE and DELETE on audit_events table; attempts raise a database exception; ORM layer only exposes insert operations"
+    test: "pytest: test_audit_immutability.py — insert an AuditEvent row; execute raw SQL UPDATE on audit_events and assert sqlalchemy.exc.DBAPIError is raised; execute raw SQL DELETE on audit_events and assert same; verify no update() method is exposed on AuditEvent ORM model"
+  - id: AC8
+    description: "AuditEvent row is written for every patient_case status change, outreach_action approval/send, and user management action"
+    test: "pytest: test_audit_events.py — (a) trigger a status transition and query audit_events for entity_type=patient_case, event_type=status_changed, assert row present with correct old_value_json and new_value_json; (b) approve an outreach action and assert audit row with event_type=outreach_approved; (c) create a user via admin API and assert audit row with event_type=user_created"
+  - id: AC9
+    description: "case_activity_events bus publishes an event for every case state transition containing actor_user_id, event_type, old_status, new_status, and occurred_at"
+    test: "pytest: test_activity_events.py — subscribe a test handler to case_activity_events; trigger a status transition; assert handler received event with all required fields: actor_user_id, event_type, old_status, new_status, occurred_at"
+  - id: AC10
+    description: "Seed data populates 6 roles in user_roles table, decline_reason_reference, payer_reference, and hospital_reference with at least one entry each"
+    test: "After `alembic upgrade head` and seed script execution, run: `SELECT count(*) FROM user_roles` (assert = 6); `SELECT count(*) FROM decline_reason_reference` (assert >= 1); `SELECT count(*) FROM payer_reference` (assert >= 1); `SELECT count(*) FROM hospital_reference` (assert >= 1)"
+  - id: AC11
+    description: "All POST/PATCH endpoints that write to PatientCase or child entities return HTTP 409 when case current_status=closed; check occurs in shared middleware before handler executes"
+    test: "pytest: test_closed_case.py — set a case to current_status=closed; attempt PATCH /api/v1/cases/{case_id} and assert 409; attempt POST /api/v1/cases/{case_id}/assessments and assert 409; confirm the handler body was never entered (use a mock or counter)"
+  - id: AC12
+    description: "org_id is read from app_metadata in the JWT, not user_metadata, preventing tenant spoofing"
+    test: "pytest: craft a JWT with organization_id set only in user_metadata (not app_metadata); assert 401 or 403 is returned and AuthContext is not populated with that org_id"
+
+constraints:
+  - "Use PyJWT[cryptography] for JWT validation — NOT python-jose (abandoned library)"
+  - "JWT middleware must handle both HS256 (SUPABASE_JWT_SECRET) and ES256 (JWKS endpoint) algorithms; algorithm is determined from token header"
+  - "organization_id MUST be extracted from app_metadata in the JWT claims, never from user_metadata"
+  - "AsyncSessionLocal must be created with expire_on_commit=False"
+  - "Application pool must use NullPool and statement_cache_size=0 (Supavisor transaction pooling compatibility)"
+  - "Alembic migrations must use DATABASE_DIRECT_URL (port 5432); application queries must use DATABASE_URL (port 6543)"
+  - "AuditEvent ORM model must expose no update() or delete() methods; only Session.add() for inserts"
+  - "RLS UPDATE policies must have a corresponding SELECT policy; both must use auth.jwt() -> 'app_metadata' ->> 'organization_id'"
+  - "transition_case_status handler is the single authoritative gatekeeper for all status transitions — no module may bypass it"
+  - "Closed-case guard must execute before handler logic to prevent partial writes before rejection"
+
+non_goals:
+  - "This node does not implement any business-logic endpoints beyond GET /api/v1/health — all feature endpoints live in their respective modules"
+  - "This node does not send emails, SMS, or any external communications"
+  - "This node does not implement the matching scoring algorithm — it only provides ORM models and shared utilities"
+  - "This node does not implement the frontend or any UI components"
+
+failure_modes:
+  - "org_id extracted from user_metadata instead of app_metadata — users could self-assign to any organization by modifying their own metadata"
+  - "ES256/JWKS validation not implemented — new Supabase projects using ES256 tokens will receive 401 on all requests"
+  - "NullPool not configured — Supavisor transaction pooling causes prepared statement conflicts and intermittent 500 errors under load"
+  - "AuditEvent trigger not created in migration — immutability guarantee exists only at ORM layer; direct DB access bypasses it"
+  - "RLS SELECT policy missing on a table that has UPDATE policy — Postgres silently denies updates because the row is invisible to the session"
+  - "transition_case_status handler not invoked by a module — module performs a raw status field update that bypasses the allowlist, enabling illegal transitions"
+  - "expire_on_commit=True (default) — SQLAlchemy lazy-loads detached ORM objects after session close, causing MissingGreenlet errors in async context"
+  - "Alembic using transaction-mode pool URL — Supavisor drops prepared statements between transactions, causing migration failures"
+
+file_scope: "placementops/core/**,main.py,alembic/**"
+depends_on: []

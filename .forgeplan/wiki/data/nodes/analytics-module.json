@@ -1,0 +1,36 @@
+{
+  "node_id": "analytics-module",
+  "status": "reviewed",
+  "node_type": "service",
+  "file_count": 7,
+  "test_file_count": 0,
+  "dependency_count": 3,
+  "connection_count": 2,
+  "entrypoints": [],
+  "hotspot_files": [],
+  "recent_findings": [],
+  "decision_ids": [
+    "D-analytics-1-sla-subquery",
+    "D-analytics-2-stage-metrics-window",
+    "D-analytics-3-placement-outcome-join",
+    "D-analytics-4-stage-metrics-python-arithmetic"
+  ],
+  "constraints": [
+    "SLA aging thresholds must be defined as named constants (not magic numbers inline): needs_clinical_review=4h yellow, under_clinical_review=8h yellow, outreach_pending_approval=2h yellow, pending_facility_response=24h yellow/48h red, declined_retry_needed=8h red",
+    "SLA flags must be computed at query time from current wall-clock time minus the timestamp the case entered its current status; they must never be stored as a column on PatientCase",
+    "All queries must filter by organization_id from request.state — using the same organization_id as in the JWT app_metadata; do not accept organization_id as a user-supplied query parameter",
+    "analytics-module is read-only; it must perform no INSERT, UPDATE, or DELETE operations on any table",
+    "Role gate (manager or admin) must execute before any database query; 403 must be returned without touching the database for unauthorized callers",
+    "All four endpoints must support pagination (page + page_size) and return total_count in every paginated response; no endpoint should return an unbounded result set",
+    "Date range defaults: if date_from is not supplied, default to 30 days before today; if date_to is not supplied, default to today; enforce date_from <= date_to and return 400 if violated",
+    "Placement rate is computed as: count(cases where outcome_type='placed') / count(all cases in date range) * 100; division by zero returns 0.0"
+  ],
+  "shared_models": [],
+  "cross_refs": [
+    "Depends on: core-infrastructure",
+    "Depends on: auth-module",
+    "Depends on: outcomes-module",
+    "Connected to: core-infrastructure",
+    "Connected to: outcomes-module"
+  ]
+}

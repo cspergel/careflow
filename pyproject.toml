@@ -1,0 +1,6 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests", "placementops"]
+markers = [
+    "postgres_required: marks tests as requiring a live Postgres instance (skip in unit test mode)",
+]

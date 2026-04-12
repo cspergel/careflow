@@ -1,0 +1,38 @@
+{
+  "node_id": "facilities-module",
+  "status": "reviewed",
+  "node_type": "service",
+  "file_count": 11,
+  "test_file_count": 0,
+  "dependency_count": 2,
+  "connection_count": 4,
+  "entrypoints": [],
+  "hotspot_files": [],
+  "recent_findings": [],
+  "decision_ids": [
+    "D-facilities-1-preference-local-model",
+    "D-facilities-2-org-filter",
+    "D-facilities-3-upsert-pattern"
+  ],
+  "constraints": [
+    "POST /facilities and PATCH /facilities/{id} are admin-only; any other role_key MUST return 403 before the handler executes.",
+    "PUT /facilities/{facility_id}/capabilities is restricted to admin and placement_coordinator; intake_staff, clinical_reviewer, and read_only MUST receive 403.",
+    "POST /facilities/{facility_id}/insurance-rules is admin-only; all other roles MUST receive 403.",
+    "PATCH /insurance-rules/{rule_id} is restricted to admin and placement_coordinator; all other roles MUST receive 403.",
+    "FacilityCapabilities field names MUST exactly match the corresponding ClinicalAssessment boolean field names; renaming either model requires a coordinated change to both.",
+    "last_verified_at MUST be set to the current UTC timestamp on every PUT capabilities and every POST or PATCH insurance-rule operation.",
+    "Supabase RLS policies MUST be defined on facilities, facility_capabilities, facility_insurance_rules, facility_contacts, and facility_preferences tables enforcing organization_id isolation.",
+    "Database connection MUST use NullPool and statement_cache_size=0 for Supabase compatibility.",
+    "FacilityContact Phase 2 voice fields (phone_extension, best_call_window, phone_contact_name) MUST be stored in the schema now even though they are not surfaced in Phase 1 UI, to avoid a future migration.",
+    "All facility writes MUST produce an AuditEvent record."
+  ],
+  "shared_models": [],
+  "cross_refs": [
+    "Depends on: core-infrastructure",
+    "Depends on: auth-module",
+    "Connected to: core-infrastructure",
+    "Connected to: auth-module",
+    "Connected to: matching-module",
+    "Connected to: outreach-module"
+  ]
+}

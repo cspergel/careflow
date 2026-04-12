@@ -1,0 +1,212 @@
+node: "analytics-module"
+name: "Analytics Module"
+spec_type: "prescriptive"
+description: >
+  Manager-facing dashboards and KPI reporting endpoints for the PlacementOps platform. Provides
+  four read-only query endpoints: GET /api/v1/queues/operations (main daily operational queue with
+  SLA aging flags per case), GET /api/v1/queues/manager-summary (queue aging distribution,
+  bottleneck counts, SLA breach cases), GET /api/v1/analytics/dashboard (case volume by status,
+  avg cycle time per stage, placement rate over a configurable date range), and GET
+  /api/v1/analytics/outreach-performance (accept/decline rates by facility and by
+  decline_reason_code). SLA aging flags are computed at query time from case timestamps — they are
+  never stored. All queries are scoped to request.state.organization_id and additionally enforced
+  by Supabase RLS (defense-in-depth). GET /api/v1/queues/operations is accessible to
+  placement_coordinator, clinical_reviewer, manager, and admin (it is the default landing page
+  for coordinators and reviewers). All other endpoints (dashboard, manager-summary,
+  outreach-performance) are restricted to manager and admin only. intake_staff and read_only
+  roles receive 403 on all endpoints. Response time target is <2 seconds for standard date
+  ranges on up to 1000 cases; larger volumes are supported via cursor or offset pagination.
+
+inputs:
+  - name: "AuthContext"
+    type: "$shared.User"
+    required: true
+    validation: "GET /api/v1/queues/operations: role_key must be one of placement_coordinator, clinical_reviewer, manager, admin. All other endpoints: role_key must be manager or admin. intake_staff and read_only return 403 on all endpoints."
+  - name: "status filter"
+    type: "string | None"
+    required: false
+    validation: "Must be one of the 14 valid PatientCase.current_status enum values if provided"
+  - name: "hospital_id filter"
+    type: "uuid | None"
+    required: false
+    validation: "Must reference a hospital_reference.id belonging to caller's organization_id if provided"
+  - name: "assigned_coordinator_user_id filter"
+    type: "uuid | None"
+    required: false
+    validation: "Must reference a users.id belonging to caller's organization_id if provided"
+  - name: "priority filter"
+    type: "string | None"
+    required: false
+    validation: "Must be one of: routine | urgent | emergent if provided"
+  - name: "date_from query param"
+    type: "date | None"
+    required: false
+    validation: "ISO 8601 date string; must be <= date_to if both provided; defaults to 30 days ago"
+  - name: "date_to query param"
+    type: "date | None"
+    required: false
+    validation: "ISO 8601 date string; must be >= date_from if both provided; defaults to today"
+  - name: "page / cursor pagination params"
+    type: "PaginationParams"
+    required: false
+    validation: "page >= 1; page_size between 1 and 200 inclusive; defaults to page=1, page_size=50"
+
+outputs:
+  - name: "GET /api/v1/queues/operations"
+    type: "Paginated list of OperationsQueueItem with SLA aging flags"
+  - name: "GET /api/v1/queues/manager-summary"
+    type: "ManagerSummary with aging distribution, bottleneck counts, SLA breach cases"
+  - name: "GET /api/v1/analytics/dashboard"
+    type: "DashboardReport with case volume by status, avg cycle times, placement rate"
+  - name: "GET /api/v1/analytics/outreach-performance"
+    type: "OutreachPerformanceReport with accept/decline rates by facility and by decline_reason_code"
+
+shared_dependencies:
+  - PatientCase
+  - PlacementOutcome
+  - OutreachAction
+  - User
+  - CaseStatusHistory
+
+data_models:
+  SlaFlag:
+    level: "str — enum: none | yellow | red"
+    status: "str — the PatientCase.current_status that triggered the flag"
+    hours_in_status: "float — computed at query time from (now - case_status_history.entered_at) for the latest CaseStatusHistory row matching the current status"
+  OperationsQueueItem:
+    case_id: "uuid"
+    patient_name: "str"
+    hospital_id: "uuid"
+    hospital_name: "str"
+    current_status: "str"
+    priority_level: "str | None"
+    assigned_coordinator_name: "str | None"
+    assigned_coordinator_user_id: "uuid | None"
+    discharge_target_date: "date | None"
+    sla_flag: "SlaFlag"
+    created_at: "timestamp"
+    updated_at: "timestamp"
+  SlaThresholds:
+    needs_clinical_review_yellow_hours: "float — 4"
+    under_clinical_review_yellow_hours: "float — 8"
+    outreach_pending_approval_yellow_hours: "float — 2"
+    pending_facility_response_yellow_hours: "float — 24"
+    pending_facility_response_red_hours: "float — 48"
+    declined_retry_needed_red_hours: "float — 8"
+  StatusAgingBucket:
+    status: "str"
+    case_count: "int"
+    sla_breach_count: "int"
+    avg_hours_in_status: "float"
+  ManagerSummary:
+    total_active_cases: "int"
+    aging_by_status: "list[StatusAgingBucket]"
+    sla_breach_cases: "list[OperationsQueueItem]"
+    generated_at: "timestamp"
+  StageMetric:
+    stage_name: "str"
+    avg_cycle_hours: "float"
+    case_count: "int"
+  DashboardReport:
+    date_from: "date"
+    date_to: "date"
+    total_cases: "int"
+    cases_by_status: "dict[str, int]"
+    placement_rate_pct: "float — placed / total * 100"
+    stage_metrics: "list[StageMetric]"
+    generated_at: "timestamp"
+  FacilityOutreachStats:
+    facility_id: "uuid"
+    facility_name: "str"
+    total_outreach_sent: "int"
+    accepted_count: "int"
+    declined_count: "int"
+    acceptance_rate_pct: "float"
+  DeclineReasonBreakdown:
+    decline_reason_code: "str"
+    decline_reason_label: "str"
+    count: "int"
+    pct_of_total_declines: "float"
+  OutreachPerformanceReport:
+    date_from: "date"
+    date_to: "date"
+    by_facility: "list[FacilityOutreachStats]"
+    by_decline_reason: "list[DeclineReasonBreakdown]"
+    generated_at: "timestamp"
+  PaginationParams:
+    page: "int — default 1"
+    page_size: "int — default 50, max 200"
+    total_count: "int"
+
+interfaces:
+  - target_node: "core-infrastructure"
+    type: "outbound"
+    contract: "Provides all ORM models as read-only access; analytics queries via AsyncSessionLocal"
+  - target_node: "auth-module"
+    type: "outbound"
+    contract: "Exports require_role Depends(); analytics-module imports to restrict /queues/operations to placement_coordinator, clinical_reviewer, manager, and admin; all other analytics endpoints (dashboard, manager-summary, outreach-performance) restricted to manager and admin only; read_only and intake_staff receive 403 on all analytics endpoints"
+  - target_node: "outcomes-module"
+    type: "inbound"
+    contract: "Reads PlacementOutcome records for placement rate calculation, accept/decline rates, and decline reason breakdowns; no writes to outcomes-module data"
+
+acceptance_criteria:
+  - id: AC1
+    description: "GET /api/v1/queues/operations returns 200 for placement_coordinator, clinical_reviewer, manager, and admin; returns 403 for intake_staff and read_only"
+    test: "pytest: authenticate as intake_staff; GET /api/v1/queues/operations; assert 403. Authenticate as read_only; assert 403. Authenticate as placement_coordinator; assert 200. Authenticate as clinical_reviewer; assert 200. Authenticate as manager; assert 200. Authenticate as admin; assert 200."
+  - id: AC2
+    description: "GET /api/v1/queues/operations returns paginated OperationsQueueItem list filtered by status, hospital_id, assigned_coordinator_user_id, priority; all items scoped to caller's organization_id"
+    test: "pytest: seed 5 cases across 2 orgs; authenticate as manager of org_a; call GET /api/v1/queues/operations?status=outreach_in_progress; assert only org_a cases with matching status are returned; assert no org_b cases present"
+  - id: AC3
+    description: "SLA aging flags are computed at query time: needs_clinical_review >4h = yellow; under_clinical_review >8h = yellow; outreach_pending_approval >2h = yellow; pending_facility_response >24h = yellow, >48h = red; declined_retry_needed >8h = red; all other statuses return level='none'"
+    test: "pytest: create a case with current_status=pending_facility_response; insert a case_status_history row with to_status=pending_facility_response and entered_at=NOW()-50h; call GET /api/v1/queues/operations; assert sla_flag.level='red'. Repeat with entered_at=NOW()-30h; assert 'yellow'. Repeat with entered_at=NOW()-10h; assert 'none'. SLA timing is computed from case_status_history.entered_at, not from PatientCase.updated_at."
+  - id: AC4
+    description: "GET /api/v1/queues/manager-summary returns aging_by_status distribution with case counts and SLA breach counts, and a sla_breach_cases list"
+    test: "pytest: seed cases in multiple statuses with varying ages; call GET /api/v1/queues/manager-summary; assert aging_by_status contains an entry for each active status with case_count matching seeded data; assert sla_breach_cases list contains all cases whose sla_flag.level is yellow or red; assert total_active_cases equals sum of all active (non-closed, non-placed) cases in org"
+  - id: AC5
+    description: "GET /api/v1/analytics/dashboard returns case volume by status, placement_rate_pct, and stage_metrics for the given date range; defaults to last 30 days"
+    test: "pytest: seed 10 cases (4 placed, 6 in other statuses); call GET /api/v1/analytics/dashboard; assert total_cases=10; assert placement_rate_pct=40.0; assert cases_by_status dict sums to total_cases; assert stage_metrics contains avg_cycle_hours for at least the intake and clinical stages; call with date_from and date_to params and assert only cases created in that range are included"
+  - id: AC6
+    description: "GET /api/v1/analytics/outreach-performance returns accept/decline rates grouped by facility and by decline_reason_code for the given date range"
+    test: "pytest: seed PlacementOutcome records with 2 accepted and 3 declined (2 with same decline_reason_code); call GET /api/v1/analytics/outreach-performance; assert by_facility list contains an entry per facility with correct accepted_count, declined_count, acceptance_rate_pct; assert by_decline_reason contains the decline_reason_code entry with count=2 and correct pct_of_total_declines"
+  - id: AC7
+    description: "All four analytics endpoints respond in <2 seconds for up to 1000 cases within a 30-day date range on the test database"
+    test: "pytest: seed 1000 cases with associated outcomes and outreach actions; time GET /api/v1/queues/operations, GET /api/v1/queues/manager-summary, GET /api/v1/analytics/dashboard, GET /api/v1/analytics/outreach-performance; assert each completes in <2000ms; assert paginated responses return page_size=50 by default with total_count=1000"
+  - id: AC8
+    description: "Pagination is supported on all list endpoints; page and page_size params control result window; total_count is always returned"
+    test: "pytest: seed 120 cases; call GET /api/v1/queues/operations?page=1&page_size=50; assert 50 items returned and total_count=120; call with page=3&page_size=50; assert 20 items returned (last page)"
+  - id: AC9
+    description: "All queries are scoped to request.state.organization_id; no cross-org case or outcome data appears in any response"
+    test: "pytest: seed 5 cases for org_a and 5 for org_b; authenticate as org_a manager; call all four endpoints; assert no org_b case_ids appear in any response; assert total_count values reflect only org_a data"
+
+constraints:
+  - "SLA aging thresholds must be defined as named constants (not magic numbers inline): needs_clinical_review=4h yellow, under_clinical_review=8h yellow, outreach_pending_approval=2h yellow, pending_facility_response=24h yellow/48h red, declined_retry_needed=8h red"
+  - "SLA flags must be computed at query time from current wall-clock time minus the timestamp the case entered its current status; they must never be stored as a column on PatientCase"
+  - "All queries must filter by organization_id from request.state — using the same organization_id as in the JWT app_metadata; do not accept organization_id as a user-supplied query parameter"
+  - "analytics-module is read-only; it must perform no INSERT, UPDATE, or DELETE operations on any table"
+  - "Role gate (manager or admin) must execute before any database query; 403 must be returned without touching the database for unauthorized callers"
+  - "All four endpoints must support pagination (page + page_size) and return total_count in every paginated response; no endpoint should return an unbounded result set"
+  - "Date range defaults: if date_from is not supplied, default to 30 days before today; if date_to is not supplied, default to today; enforce date_from <= date_to and return 400 if violated"
+  - "Placement rate is computed as: count(cases where outcome_type='placed') / count(all cases in date range) * 100; division by zero returns 0.0"
+
+non_goals:
+  - "This node does not write any data; it does not create PatientCase, PlacementOutcome, OutreachAction, or AuditEvent records"
+  - "This node does not expose queue endpoints for coordinators or intake staff — those role-specific queues belong to intake-module (GET /api/v1/queues/intake) and outreach-module (GET /api/v1/queues/outreach)"
+  - "This node does not implement real-time or streaming analytics; all endpoints return point-in-time snapshots"
+  - "This node does not implement CSV or PDF export of analytics data in Phase 1"
+  - "This node does not implement facility-level capacity trend analysis or predictive placement scoring"
+  - "This node does not store pre-computed or cached aggregates; all metrics are computed live from normalized tables"
+
+failure_modes:
+  - "SLA flag hours_in_status computed from case created_at instead of status_entered_at — cases that sat in new/intake stages before reaching a flaggable status show inflated SLA breach ages, generating false positives for managers"
+  - "organization_id filter omitted from a subquery joining PlacementOutcome to PatientCase — outcomes from other orgs bleed into decline reason breakdown, violating tenant isolation"
+  - "Role check placed after the database query — non-manager roles receive data before the 403 is returned if error handling is applied too late in the middleware chain"
+  - "Placement rate denominator includes closed cases created outside the date range — rate appears inflated or deflated depending on seed data distribution"
+  - "No pagination guard on GET /api/v1/queues/operations — a manager with 5000 active cases causes a query timeout and 500 error"
+  - "SLA thresholds hardcoded as inline literals in multiple query functions — a threshold change requires hunting across the codebase and risks inconsistency between endpoints"
+  - "avg_cycle_hours for a stage computed using updated_at instead of the stage-specific transition timestamps — cycle time metric is meaningless if cases are edited without status changes"
+
+file_scope: "placementops/modules/analytics/**"
+depends_on:
+  - core-infrastructure
+  - auth-module
+  - outcomes-module

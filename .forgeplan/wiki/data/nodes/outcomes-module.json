@@ -1,0 +1,54 @@
+{
+  "node_id": "outcomes-module",
+  "status": "reviewed",
+  "node_type": "service",
+  "file_count": 8,
+  "test_file_count": 0,
+  "dependency_count": 3,
+  "connection_count": 4,
+  "entrypoints": [],
+  "hotspot_files": [],
+  "recent_findings": [
+    {
+      "pass": "review",
+      "agent": "reviewer",
+      "finding": "AC14",
+      "resolution": "MEDIUM",
+      "file": null
+    },
+    {
+      "pass": "review",
+      "agent": "reviewer",
+      "finding": "F3",
+      "resolution": "AC1",
+      "file": null
+    }
+  ],
+  "decision_ids": [
+    "D-outcomes-1-pre-flush-atomicity",
+    "D-outcomes-2-timeline-from-csh",
+    "D-outcomes-3-family-withdrawn-no-transition",
+    "D-outcomes-4-outcome-audit-separate"
+  ],
+  "constraints": [
+    "All outcomes MUST write an AuditEvent regardless of outcome_type; auditing is not limited to declines",
+    "facility_id MUST be validated against OutreachAction.approval_status=sent for the same case before recording accepted or declined outcomes; returning 400 without this check creates a data integrity gap",
+    "facility_id MUST be null-permitted for family_declined and withdrawn outcome_types; the validation rule for required vs nullable facility_id MUST be outcome_type-conditional",
+    "Auto-cancel of outstanding outreach actions MUST execute in the same database transaction as the case status advance to accepted or placed; partial cancellation is not acceptable",
+    "sent OutreachAction records MUST NOT be canceled by the auto-cancel logic; only draft/pending_approval/approved states are eligible",
+    "Retry routing (declined_retry_needed → ready_for_matching or outreach_pending_approval) MUST be delegated to the core-infrastructure shared state-machine handler; this module MUST NOT write PatientCase.current_status directly",
+    "Case closure (status-transition to closed) MUST require closure_reason text and MUST be restricted to manager or admin role",
+    "organization_id scoping MUST be applied to all queries; cross-tenant data MUST never be returned",
+    "decline_reason_code MUST be validated against the decline_reason_reference seed table; free-text codes are not permitted"
+  ],
+  "shared_models": [],
+  "cross_refs": [
+    "Depends on: core-infrastructure",
+    "Depends on: auth-module",
+    "Depends on: outreach-module",
+    "Connected to: core-infrastructure",
+    "Connected to: auth-module",
+    "Connected to: outreach-module",
+    "Connected to: analytics-module"
+  ]
+}

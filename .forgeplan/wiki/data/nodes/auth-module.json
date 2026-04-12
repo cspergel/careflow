@@ -1,0 +1,76 @@
+{
+  "node_id": "auth-module",
+  "status": "reviewed",
+  "node_type": "service",
+  "file_count": 14,
+  "test_file_count": 0,
+  "dependency_count": 1,
+  "connection_count": 9,
+  "entrypoints": [],
+  "hotspot_files": [],
+  "recent_findings": [
+    {
+      "pass": "review",
+      "agent": "reviewer",
+      "finding": "`router.py`",
+      "resolution": "Present (line 1)",
+      "file": null
+    },
+    {
+      "pass": "review",
+      "agent": "reviewer",
+      "finding": "`dependencies.py`",
+      "resolution": "Present (line 1)",
+      "file": null
+    },
+    {
+      "pass": "review",
+      "agent": "reviewer",
+      "finding": "`service.py`",
+      "resolution": "Present (line 1)",
+      "file": null
+    },
+    {
+      "pass": "review",
+      "agent": "reviewer",
+      "finding": "`schemas.py`",
+      "resolution": "Present (line 1)",
+      "file": null
+    },
+    {
+      "pass": "review",
+      "agent": "reviewer",
+      "finding": "`rate_limiter.py`",
+      "resolution": "Present (line 1)",
+      "file": null
+    }
+  ],
+  "decision_ids": [
+    "D-auth-3-rate-limiter-module-state",
+    "D-auth-4-rbac-role-permissions-dict",
+    "D-auth-2-supabase-logout",
+    "D-auth-1-db-role-lookup"
+  ],
+  "constraints": [
+    "organization_id must be provisioned into app_metadata (not user_metadata) when creating users; the JWT middleware in core-infrastructure reads from app_metadata",
+    "Rate limiting on POST /auth/login must be per-IP (X-Forwarded-For preferred, fallback to remote_addr) and must not share state with any other rate-limit counter",
+    "require_write_permission Depends() must intercept the request before the handler body executes — no partial writes may occur before the 403 is returned for read_only",
+    "Role checks must use AuthContext.role_key populated from the User database row (via core-infrastructure get_auth_context) — not from raw JWT claims, which could be stale",
+    "The read_only role must return HTTP 403 (not 401) so the client can distinguish authenticated-but-unauthorized from unauthenticated",
+    "Logout must call Supabase Auth signOut to server-side invalidate the token; client-side token deletion alone is insufficient",
+    "All auth endpoints must be registered under the /api/v1/auth prefix"
+  ],
+  "shared_models": [],
+  "cross_refs": [
+    "Depends on: core-infrastructure",
+    "Connected to: core-infrastructure",
+    "Connected to: intake-module",
+    "Connected to: clinical-module",
+    "Connected to: facilities-module",
+    "Connected to: matching-module",
+    "Connected to: outreach-module",
+    "Connected to: outcomes-module",
+    "Connected to: analytics-module",
+    "Connected to: admin-surfaces"
+  ]
+}

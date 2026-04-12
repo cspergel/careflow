@@ -1,0 +1,106 @@
+{
+  "project": {
+    "name": "PlacementOps",
+    "tier": "LARGE",
+    "tech_stack": {
+      "runtime": "python+node",
+      "language": "python+typescript",
+      "database": "supabase",
+      "orm": "sqlalchemy",
+      "api_framework": "fastapi",
+      "auth": "supabase-auth",
+      "test_framework": "pytest+jest",
+      "frontend": "next.js",
+      "ui_library": "shadcn/ui+tailwind",
+      "background_jobs": "fastapi-backgroundtasks",
+      "deployment": "docker",
+      "test_command": "",
+      "dev_port": null,
+      "mock_mode": false
+    },
+    "node_ids": [
+      "core-infrastructure",
+      "auth-module",
+      "intake-module",
+      "clinical-module",
+      "facilities-module",
+      "matching-module",
+      "outreach-module",
+      "outcomes-module",
+      "analytics-module",
+      "admin-surfaces",
+      "frontend-app-shell"
+    ]
+  },
+  "wiki_last_compiled": "2026-04-12T19:12:13.265Z",
+  "wiki_is_stale": true,
+  "hotspots": [],
+  "node_health": [
+    {
+      "node_id": "auth-module",
+      "status": "reviewed",
+      "finding_count": 14,
+      "hot_files": []
+    },
+    {
+      "node_id": "frontend-app-shell",
+      "status": "reviewed",
+      "finding_count": 3,
+      "hot_files": []
+    },
+    {
+      "node_id": "core-infrastructure",
+      "status": "reviewed",
+      "finding_count": 2,
+      "hot_files": []
+    },
+    {
+      "node_id": "outcomes-module",
+      "status": "reviewed",
+      "finding_count": 2,
+      "hot_files": []
+    },
+    {
+      "node_id": "admin-surfaces",
+      "status": "reviewed",
+      "finding_count": 0,
+      "hot_files": []
+    },
+    {
+      "node_id": "analytics-module",
+      "status": "reviewed",
+      "finding_count": 0,
+      "hot_files": []
+    },
+    {
+      "node_id": "clinical-module",
+      "status": "reviewed",
+      "finding_count": 0,
+      "hot_files": []
+    },
+    {
+      "node_id": "facilities-module",
+      "status": "reviewed",
+      "finding_count": 0,
+      "hot_files": []
+    },
+    {
+      "node_id": "intake-module",
+      "status": "reviewed",
+      "finding_count": 0,
+      "hot_files": []
+    },
+    {
+      "node_id": "matching-module",
+      "status": "reviewed",
+      "finding_count": 0,
+      "hot_files": []
+    },
+    {
+      "node_id": "outreach-module",
+      "status": "reviewed",
+      "finding_count": 0,
+      "hot_files": []
+    }
+  ]
+}

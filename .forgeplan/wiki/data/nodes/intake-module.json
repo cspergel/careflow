@@ -1,0 +1,42 @@
+{
+  "node_id": "intake-module",
+  "status": "reviewed",
+  "node_type": "service",
+  "file_count": 10,
+  "test_file_count": 0,
+  "dependency_count": 2,
+  "connection_count": 4,
+  "entrypoints": [],
+  "hotspot_files": [],
+  "recent_findings": [],
+  "decision_ids": [
+    "D-intake-1-local-models",
+    "D-intake-2-file-bytes-in-memory",
+    "D-intake-3-required-intake-fields",
+    "D-intake-4-resolved-flag-true",
+    "D-intake-5-fresh-session-background"
+  ],
+  "constraints": [
+    "File bytes MUST be read eagerly in the upload endpoint and passed to the BackgroundTask as bytes; UploadFile must never be accessed inside the background task after the request lifecycle ends.",
+    "BackgroundTask MUST open a fresh AsyncSessionLocal; it MUST NOT receive or reuse the request-scoped database session.",
+    "ImportJob record MUST be written to the database before the endpoint returns; no import state is kept in in-memory dicts.",
+    "openpyxl MUST be used with read_only=True for parsing large files; parsing MUST be run in loop.run_in_executor to avoid blocking the event loop.",
+    "Import progress MUST be persisted to ImportJob every 50 rows; per-row progress writes are forbidden.",
+    "Database connection MUST use NullPool and statement_cache_size=0 for Supabase compatibility.",
+    "Maximum upload size is 10 MB; the endpoint MUST reject oversized files with HTTP 413 before reading the full body.",
+    "Content-type validation is mandatory on upload; only application/vnd.openxmlformats-officedocument.spreadsheetml.sheet and text/csv are accepted.",
+    "ZIP bomb / decompression bomb detection MUST occur before any spreadsheet parsing begins.",
+    "Role-based field allowlists on PATCH MUST be enforced server-side; the client-supplied field list is never trusted.",
+    "Case creation and mark-intake-complete are restricted to intake_staff and admin; the middleware MUST enforce this before the handler executes.",
+    "All PatientCase writes MUST include updated_by_user_id from the authenticated user."
+  ],
+  "shared_models": [],
+  "cross_refs": [
+    "Depends on: core-infrastructure",
+    "Depends on: auth-module",
+    "Connected to: core-infrastructure",
+    "Connected to: auth-module",
+    "Connected to: clinical-module",
+    "Connected to: admin-surfaces"
+  ]
+}

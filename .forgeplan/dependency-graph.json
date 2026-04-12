@@ -1,0 +1,3289 @@
+{
+  "files": {
+    "frontend/jest.config.js": {
+      "hash": "c733a55e",
+      "imports": [
+        {
+          "source": "next/jest.js",
+          "names": [
+            "nextJest"
+          ],
+          "type": "require"
+        }
+      ],
+      "exports": [],
+      "node": "frontend-app-shell"
+    },
+    "frontend/jest.config.ts": {
+      "hash": "c5378621",
+      "imports": [
+        {
+          "source": "next/jest.js",
+          "names": [
+            "nextJest"
+          ],
+          "type": "default"
+        }
+      ],
+      "exports": [
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/jest.setup.ts": {
+      "hash": "4fe7773e",
+      "imports": [],
+      "exports": [],
+      "node": "frontend-app-shell"
+    },
+    "frontend/middleware.ts": {
+      "hash": "9d739169",
+      "imports": [
+        {
+          "source": "@supabase/ssr",
+          "names": [
+            "type CookieOptions",
+            "createServerClient"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "next/server",
+          "names": [
+            "NextResponse",
+            "type NextRequest"
+          ],
+          "type": "named"
+        }
+      ],
+      "exports": [
+        "middleware",
+        "config"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/openapi-ts.config.ts": {
+      "hash": "8fb82ddc",
+      "imports": [
+        {
+          "source": "@hey-api/openapi-ts",
+          "names": [
+            "defineConfig"
+          ],
+          "type": "named"
+        }
+      ],
+      "exports": [
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/app/admin/page.tsx": {
+      "hash": "ae59470b",
+      "imports": [
+        {
+          "source": "next/navigation",
+          "names": [
+            "useRouter"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "nuqs",
+          "names": [
+            "parseAsString",
+            "useQueryState"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/tabs",
+          "names": [
+            "Tabs",
+            "TabsContent",
+            "TabsList",
+            "TabsTrigger"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/badge",
+          "names": [
+            "Badge"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/button",
+          "names": [
+            "Button"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/input",
+          "names": [
+            "Input"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/select",
+          "names": [
+            "Select",
+            "SelectContent",
+            "SelectItem",
+            "SelectTrigger",
+            "SelectValue"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "formatDate",
+            "formatDateTime"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/client",
+          "names": [
+            "apiClient",
+            "ApiError"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/supabase/client",
+          "names": [
+            "createClient"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/app/analytics/AnalyticsDashboard.tsx": {
+      "hash": "10d5a3dd",
+      "imports": [
+        {
+          "source": "@/components/ui/card",
+          "names": [
+            "Card",
+            "CardContent",
+            "CardHeader",
+            "CardTitle"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/client",
+          "names": [
+            "apiClient",
+            "ApiError"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "AnalyticsDashboard"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/app/analytics/page.tsx": {
+      "hash": "35c706ae",
+      "imports": [
+        {
+          "source": "next/navigation",
+          "names": [
+            "redirect"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/supabase/server",
+          "names": [
+            "createClient"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/app/analytics/AnalyticsDashboard",
+          "names": [
+            "AnalyticsDashboard"
+          ],
+          "type": "named"
+        }
+      ],
+      "exports": [
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/app/cases/[case_id]/page.tsx": {
+      "hash": "4f33a4e5",
+      "imports": [
+        {
+          "source": "next/navigation",
+          "names": [
+            "useParams"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "lucide-react",
+          "names": [
+            "ArrowLeft",
+            "RefreshCw",
+            "AlertTriangle"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "nuqs",
+          "names": [
+            "parseAsString",
+            "useQueryState"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/tabs",
+          "names": [
+            "Tabs",
+            "TabsContent",
+            "TabsList",
+            "TabsTrigger"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/button",
+          "names": [
+            "Button"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/sheet",
+          "names": [
+            "Sheet",
+            "SheetContent",
+            "SheetHeader",
+            "SheetTitle",
+            "SheetDescription"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/badge",
+          "names": [
+            "Badge"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/StatusBadge",
+          "names": [
+            "StatusBadge"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/FacilityCard",
+          "names": [
+            "FacilityCard",
+            "type FacilityCardData"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ActivityTimeline",
+          "names": [
+            "ActivityTimeline",
+            "type TimelineEvent"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/DraftEditor",
+          "names": [
+            "DraftEditor",
+            "type DraftTemplateOption",
+            "type ExistingDraft"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ClinicalAssessmentForm",
+          "names": [
+            "ClinicalAssessmentForm",
+            "type ClinicalAssessmentFormData"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/client",
+          "names": [
+            "apiClient",
+            "ApiError"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "formatDate",
+            "formatDateTime"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/supabase/client",
+          "names": [
+            "createClient"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "next/link",
+          "names": [
+            "Link"
+          ],
+          "type": "default"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/app/dashboard/DashboardKPIs.tsx": {
+      "hash": "5eb19270",
+      "imports": [
+        {
+          "source": "@/components/ui/card",
+          "names": [
+            "Card",
+            "CardContent",
+            "CardHeader",
+            "CardTitle"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/client",
+          "names": [
+            "apiClient",
+            "ApiError"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "DashboardKPIs"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/app/dashboard/page.tsx": {
+      "hash": "1679ea74",
+      "imports": [
+        {
+          "source": "next/navigation",
+          "names": [
+            "redirect"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/supabase/server",
+          "names": [
+            "createClient"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "formatDate"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/app/dashboard/DashboardKPIs",
+          "names": [
+            "DashboardKPIs"
+          ],
+          "type": "named"
+        }
+      ],
+      "exports": [
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/app/facilities/page.tsx": {
+      "hash": "64c4e42c",
+      "imports": [
+        {
+          "source": "@tanstack/react-table",
+          "names": [
+            "ColumnDef"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "lucide-react",
+          "names": [
+            "Building2"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/badge",
+          "names": [
+            "Badge"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/CaseTable",
+          "names": [
+            "CaseTable"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/FilterBar",
+          "names": [
+            "FilterBar"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/client",
+          "names": [
+            "apiClient",
+            "ApiError"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "next/link",
+          "names": [
+            "Link"
+          ],
+          "type": "default"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/app/facilities/[facility_id]/page.tsx": {
+      "hash": "08476403",
+      "imports": [
+        {
+          "source": "next/navigation",
+          "names": [
+            "useParams"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "lucide-react",
+          "names": [
+            "ArrowLeft",
+            "CheckCircle",
+            "XCircle",
+            "Phone",
+            "Mail"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "nuqs",
+          "names": [
+            "parseAsString",
+            "useQueryState"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/button",
+          "names": [
+            "Button"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/tabs",
+          "names": [
+            "Tabs",
+            "TabsContent",
+            "TabsList",
+            "TabsTrigger"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/badge",
+          "names": [
+            "Badge"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/separator",
+          "names": [
+            "Separator"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/client",
+          "names": [
+            "apiClient",
+            "ApiError"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "formatDate"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "next/link",
+          "names": [
+            "Link"
+          ],
+          "type": "default"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/app/intake/import/page.tsx": {
+      "hash": "d3721dc6",
+      "imports": [
+        {
+          "source": "lucide-react",
+          "names": [
+            "CheckCircle",
+            "XCircle",
+            "AlertTriangle",
+            "ArrowLeft",
+            "RefreshCw"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/button",
+          "names": [
+            "Button"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/badge",
+          "names": [
+            "Badge"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/card",
+          "names": [
+            "Card",
+            "CardContent",
+            "CardHeader",
+            "CardTitle"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/client",
+          "names": [
+            "apiClient",
+            "ApiError"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "formatDateTime"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "next/dynamic",
+          "names": [
+            "dynamic"
+          ],
+          "type": "default"
+        },
+        {
+          "source": "next/link",
+          "names": [
+            "Link"
+          ],
+          "type": "default"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/app/intake/page.tsx": {
+      "hash": "e8051c71",
+      "imports": [
+        {
+          "source": "react-hook-form",
+          "names": [
+            "useForm"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@hookform/resolvers/zod",
+          "names": [
+            "zodResolver"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "zod",
+          "names": [
+            "z"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "lucide-react",
+          "names": [
+            "Plus",
+            "Upload",
+            "AlertTriangle"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@tanstack/react-table",
+          "names": [
+            "ColumnDef"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/button",
+          "names": [
+            "Button"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/input",
+          "names": [
+            "Input"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/label",
+          "names": [
+            "Label"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/sheet",
+          "names": [
+            "Sheet",
+            "SheetContent",
+            "SheetHeader",
+            "SheetTitle",
+            "SheetDescription"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/select",
+          "names": [
+            "Select",
+            "SelectContent",
+            "SelectItem",
+            "SelectTrigger",
+            "SelectValue"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/StatusBadge",
+          "names": [
+            "StatusBadge"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/CaseTable",
+          "names": [
+            "CaseTable"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/FilterBar",
+          "names": [
+            "FilterBar"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "formatDate"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/client",
+          "names": [
+            "apiClient",
+            "ApiError"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "next/link",
+          "names": [
+            "Link"
+          ],
+          "type": "default"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/app/layout.tsx": {
+      "hash": "996ae92f",
+      "imports": [
+        {
+          "source": "next/navigation",
+          "names": [
+            "redirect"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/supabase/server",
+          "names": [
+            "createClient"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/Sidebar",
+          "names": [
+            "Sidebar"
+          ],
+          "type": "named"
+        }
+      ],
+      "exports": [
+        "metadata",
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/app/login/page.tsx": {
+      "hash": "6565496c",
+      "imports": [
+        {
+          "source": "next/navigation",
+          "names": [
+            "useRouter"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/supabase/client",
+          "names": [
+            "createClient"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/button",
+          "names": [
+            "Button"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/input",
+          "names": [
+            "Input"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/label",
+          "names": [
+            "Label"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/card",
+          "names": [
+            "Card",
+            "CardContent",
+            "CardHeader",
+            "CardTitle",
+            "CardDescription"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/app/outreach/page.tsx": {
+      "hash": "491a1f8b",
+      "imports": [
+        {
+          "source": "@tanstack/react-table",
+          "names": [
+            "ColumnDef"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/badge",
+          "names": [
+            "Badge"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/CaseTable",
+          "names": [
+            "CaseTable"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/FilterBar",
+          "names": [
+            "FilterBar"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "formatDate"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/client",
+          "names": [
+            "apiClient",
+            "ApiError"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "next/link",
+          "names": [
+            "Link"
+          ],
+          "type": "default"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/app/page.tsx": {
+      "hash": "92ef4a26",
+      "imports": [
+        {
+          "source": "next/navigation",
+          "names": [
+            "redirect"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/supabase/server",
+          "names": [
+            "createClient"
+          ],
+          "type": "named"
+        }
+      ],
+      "exports": [
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/app/queue/page.tsx": {
+      "hash": "d3468105",
+      "imports": [
+        {
+          "source": "@tanstack/react-table",
+          "names": [
+            "ColumnDef"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "lucide-react",
+          "names": [
+            "AlertTriangle",
+            "RotateCcw"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/button",
+          "names": [
+            "Button"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/sheet",
+          "names": [
+            "Sheet",
+            "SheetContent",
+            "SheetHeader",
+            "SheetTitle",
+            "SheetDescription"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/select",
+          "names": [
+            "Select",
+            "SelectContent",
+            "SelectItem",
+            "SelectTrigger",
+            "SelectValue"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/StatusBadge",
+          "names": [
+            "StatusBadge"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/CaseTable",
+          "names": [
+            "CaseTable"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "daysElapsed",
+            "formatDate"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/client",
+          "names": [
+            "apiClient",
+            "ApiError"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "next/link",
+          "names": [
+            "Link"
+          ],
+          "type": "default"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/client/index.ts": {
+      "hash": "0f5b478d",
+      "imports": [
+        {
+          "source": "@/lib/supabase/client",
+          "names": [
+            "createClient"
+          ],
+          "type": "named"
+        }
+      ],
+      "exports": [
+        "ClientConfig",
+        "createApiClient",
+        "ApiError",
+        "apiClient"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/ActivityTimeline.tsx": {
+      "hash": "92b98c48",
+      "imports": [
+        {
+          "source": "lucide-react",
+          "names": [
+            "ArrowRightLeft",
+            "PlusCircle",
+            "Stethoscope",
+            "Mail",
+            "Building2",
+            "ClipboardCheck",
+            "CheckCircle",
+            "Lock",
+            "Pin"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "formatDateTime"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "TimelineEvent",
+        "ActivityTimeline",
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/CaseTable.tsx": {
+      "hash": "9eb29876",
+      "imports": [
+        {
+          "source": "@tanstack/react-table",
+          "names": [
+            "ColumnDef",
+            "flexRender",
+            "getCoreRowModel",
+            "useReactTable",
+            "SortingState",
+            "ColumnFiltersState",
+            "PaginationState"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "nuqs",
+          "names": [
+            "parseAsInteger",
+            "parseAsString",
+            "parseAsArrayOf",
+            "useQueryStates"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "lucide-react",
+          "names": [
+            "ChevronUp",
+            "ChevronDown",
+            "ChevronsUpDown",
+            "ChevronLeft",
+            "ChevronRight"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/button",
+          "names": [
+            "Button"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "CaseTableFilters",
+        "useCaseTableFilters",
+        "CaseTable",
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/ClinicalAssessmentForm.tsx": {
+      "hash": "6a5d2535",
+      "imports": [
+        {
+          "source": "react-hook-form",
+          "names": [
+            "useForm"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@hookform/resolvers/zod",
+          "names": [
+            "zodResolver"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "zod",
+          "names": [
+            "z"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/button",
+          "names": [
+            "Button"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/input",
+          "names": [
+            "Input"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/textarea",
+          "names": [
+            "Textarea"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/label",
+          "names": [
+            "Label"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/checkbox",
+          "names": [
+            "Checkbox"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/select",
+          "names": [
+            "Select",
+            "SelectContent",
+            "SelectItem",
+            "SelectTrigger",
+            "SelectValue"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/form",
+          "names": [
+            "Form",
+            "FormControl",
+            "FormField",
+            "FormItem",
+            "FormLabel",
+            "FormMessage"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/separator",
+          "names": [
+            "Separator"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "ClinicalAssessmentFormData",
+        "ClinicalAssessmentFormProps",
+        "ClinicalAssessmentForm",
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/DraftEditor.tsx": {
+      "hash": "3373a034",
+      "imports": [
+        {
+          "source": "react-hook-form",
+          "names": [
+            "useForm"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@hookform/resolvers/zod",
+          "names": [
+            "zodResolver"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "zod",
+          "names": [
+            "z"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "lucide-react",
+          "names": [
+            "Send",
+            "Check",
+            "X",
+            "FileText"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/button",
+          "names": [
+            "Button"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/input",
+          "names": [
+            "Input"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/textarea",
+          "names": [
+            "Textarea"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/label",
+          "names": [
+            "Label"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/select",
+          "names": [
+            "Select",
+            "SelectContent",
+            "SelectItem",
+            "SelectTrigger",
+            "SelectValue"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/badge",
+          "names": [
+            "Badge"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "DraftTemplateOption",
+        "ExistingDraft",
+        "DraftEditorProps",
+        "DraftFormData",
+        "DraftEditor",
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/FacilityCard.tsx": {
+      "hash": "7b907de8",
+      "imports": [
+        {
+          "source": "lucide-react",
+          "names": [
+            "MapPin",
+            "Star",
+            "AlertTriangle",
+            "CheckCircle"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/badge",
+          "names": [
+            "Badge"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/button",
+          "names": [
+            "Button"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/card",
+          "names": [
+            "Card",
+            "CardContent",
+            "CardHeader"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "FacilityCardData",
+        "FacilityCard",
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/FilterBar.tsx": {
+      "hash": "2c305831",
+      "imports": [
+        {
+          "source": "lucide-react",
+          "names": [
+            "Search",
+            "X"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/input",
+          "names": [
+            "Input"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/button",
+          "names": [
+            "Button"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/badge",
+          "names": [
+            "Badge"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/CaseTable",
+          "names": [
+            "useCaseTableFilters"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/StatusBadge",
+          "names": [
+            "STATUS_CONFIG"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "FilterBar",
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/Sidebar.tsx": {
+      "hash": "2a0405a1",
+      "imports": [
+        {
+          "source": "next/navigation",
+          "names": [
+            "usePathname"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "lucide-react",
+          "names": [
+            "ClipboardList",
+            "ListChecks",
+            "Send",
+            "Building2",
+            "BarChart2",
+            "Settings",
+            "LayoutDashboard",
+            "LogOut",
+            "ChevronRight"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "next/link",
+          "names": [
+            "Link"
+          ],
+          "type": "default"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "NavItem",
+        "Sidebar",
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/StatusBadge.tsx": {
+      "hash": "8c1fedbb",
+      "imports": [
+        {
+          "source": "@/components/ui/badge",
+          "names": [
+            "Badge"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        }
+      ],
+      "exports": [
+        "CaseStatus",
+        "StatusConfigEntry",
+        "STATUS_CONFIG",
+        "assertNeverStatus",
+        "StatusBadge",
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/ui/badge.tsx": {
+      "hash": "cca07764",
+      "imports": [
+        {
+          "source": "class-variance-authority",
+          "names": [
+            "cva",
+            "type VariantProps"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "BadgeProps",
+        "Badge",
+        "badgeVariants"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/ui/button.tsx": {
+      "hash": "aba097ad",
+      "imports": [
+        {
+          "source": "@radix-ui/react-slot",
+          "names": [
+            "Slot"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "class-variance-authority",
+          "names": [
+            "cva",
+            "type VariantProps"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "ButtonProps",
+        "Button",
+        "buttonVariants"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/ui/card.tsx": {
+      "hash": "604b47f7",
+      "imports": [
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "Card",
+        "CardHeader",
+        "CardFooter",
+        "CardTitle",
+        "CardDescription",
+        "CardContent"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/ui/checkbox.tsx": {
+      "hash": "bd33a5e6",
+      "imports": [
+        {
+          "source": "lucide-react",
+          "names": [
+            "Check"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        },
+        {
+          "source": "@radix-ui/react-checkbox",
+          "names": [
+            "CheckboxPrimitive"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "Checkbox"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/ui/form.tsx": {
+      "hash": "2b42d310",
+      "imports": [
+        {
+          "source": "@radix-ui/react-slot",
+          "names": [
+            "Slot"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react-hook-form",
+          "names": [
+            "Controller",
+            "ControllerProps",
+            "FieldPath",
+            "FieldValues",
+            "FormProvider",
+            "useFormContext"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/components/ui/label",
+          "names": [
+            "Label"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        },
+        {
+          "source": "@radix-ui/react-label",
+          "names": [
+            "LabelPrimitive"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "useFormField",
+        "Form",
+        "FormItem",
+        "FormLabel",
+        "FormControl",
+        "FormDescription",
+        "FormMessage",
+        "FormField"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/ui/input.tsx": {
+      "hash": "7756f148",
+      "imports": [
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "InputProps",
+        "Input"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/ui/label.tsx": {
+      "hash": "70259d0e",
+      "imports": [
+        {
+          "source": "class-variance-authority",
+          "names": [
+            "cva",
+            "type VariantProps"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        },
+        {
+          "source": "@radix-ui/react-label",
+          "names": [
+            "LabelPrimitive"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "Label"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/ui/select.tsx": {
+      "hash": "40337e8c",
+      "imports": [
+        {
+          "source": "lucide-react",
+          "names": [
+            "Check",
+            "ChevronDown",
+            "ChevronUp"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        },
+        {
+          "source": "@radix-ui/react-select",
+          "names": [
+            "SelectPrimitive"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "Select",
+        "SelectGroup",
+        "SelectValue",
+        "SelectTrigger",
+        "SelectContent",
+        "SelectLabel",
+        "SelectItem",
+        "SelectSeparator",
+        "SelectScrollUpButton",
+        "SelectScrollDownButton"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/ui/separator.tsx": {
+      "hash": "d9d9a4fd",
+      "imports": [
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        },
+        {
+          "source": "@radix-ui/react-separator",
+          "names": [
+            "SeparatorPrimitive"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "Separator"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/ui/sheet.tsx": {
+      "hash": "7b62519a",
+      "imports": [
+        {
+          "source": "class-variance-authority",
+          "names": [
+            "cva",
+            "type VariantProps"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "lucide-react",
+          "names": [
+            "X"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        },
+        {
+          "source": "@radix-ui/react-dialog",
+          "names": [
+            "DialogPrimitive"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "Sheet",
+        "SheetPortal",
+        "SheetOverlay",
+        "SheetTrigger",
+        "SheetClose",
+        "SheetContent",
+        "SheetHeader",
+        "SheetFooter",
+        "SheetTitle",
+        "SheetDescription"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/ui/tabs.tsx": {
+      "hash": "59c478e0",
+      "imports": [
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        },
+        {
+          "source": "@radix-ui/react-tabs",
+          "names": [
+            "TabsPrimitive"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "Tabs",
+        "TabsList",
+        "TabsTrigger",
+        "TabsContent"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/ui/textarea.tsx": {
+      "hash": "c5bad233",
+      "imports": [
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "TextareaProps",
+        "Textarea"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/ui/toast.tsx": {
+      "hash": "a119b66f",
+      "imports": [
+        {
+          "source": "class-variance-authority",
+          "names": [
+            "cva",
+            "type VariantProps"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "lucide-react",
+          "names": [
+            "X"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "cn"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "namespace"
+        },
+        {
+          "source": "@radix-ui/react-toast",
+          "names": [
+            "ToastPrimitives"
+          ],
+          "type": "namespace"
+        }
+      ],
+      "exports": [
+        "type ToastProps",
+        "type ToastActionElement",
+        "ToastProvider",
+        "ToastViewport",
+        "Toast",
+        "ToastTitle",
+        "ToastDescription",
+        "ToastClose",
+        "ToastAction"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/__tests__/CaseTable.test.tsx": {
+      "hash": "adf1165b",
+      "imports": [
+        {
+          "source": "@testing-library/react",
+          "names": [
+            "render",
+            "screen",
+            "renderHook"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "@tanstack/react-table",
+          "names": [
+            "useReactTable",
+            "getCoreRowModel"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "default"
+        }
+      ],
+      "exports": [],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/__tests__/ClinicalAssessmentForm.test.tsx": {
+      "hash": "be71758f",
+      "imports": [
+        {
+          "source": "@testing-library/react",
+          "names": [
+            "render",
+            "screen",
+            "fireEvent",
+            "waitFor"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "../ClinicalAssessmentForm",
+          "names": [
+            "ClinicalAssessmentForm"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "default"
+        },
+        {
+          "source": "@testing-library/user-event",
+          "names": [
+            "userEvent"
+          ],
+          "type": "default"
+        }
+      ],
+      "exports": [],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/components/__tests__/StatusBadge.test.tsx": {
+      "hash": "1601d70f",
+      "imports": [
+        {
+          "source": "@testing-library/react",
+          "names": [
+            "render",
+            "screen"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "../StatusBadge",
+          "names": [
+            "StatusBadge",
+            "STATUS_CONFIG",
+            "assertNeverStatus"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "react",
+          "names": [
+            "React"
+          ],
+          "type": "default"
+        }
+      ],
+      "exports": [],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/lib/supabase/client.ts": {
+      "hash": "1446f3d6",
+      "imports": [
+        {
+          "source": "@supabase/ssr",
+          "names": [
+            "createBrowserClient"
+          ],
+          "type": "named"
+        }
+      ],
+      "exports": [
+        "createClient"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/lib/supabase/server.ts": {
+      "hash": "67710709",
+      "imports": [
+        {
+          "source": "@supabase/ssr",
+          "names": [
+            "type CookieOptions",
+            "createServerClient"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "next/headers",
+          "names": [
+            "cookies"
+          ],
+          "type": "named"
+        }
+      ],
+      "exports": [
+        "createClient"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/src/lib/utils.ts": {
+      "hash": "35af1f1a",
+      "imports": [
+        {
+          "source": "clsx",
+          "names": [
+            "type ClassValue",
+            "clsx"
+          ],
+          "type": "named"
+        },
+        {
+          "source": "tailwind-merge",
+          "names": [
+            "twMerge"
+          ],
+          "type": "named"
+        }
+      ],
+      "exports": [
+        "cn",
+        "formatDate",
+        "formatDateTime",
+        "daysElapsed",
+        "toTitleCase"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "frontend/tailwind.config.ts": {
+      "hash": "2a340f3a",
+      "imports": [],
+      "exports": [
+        "default"
+      ],
+      "node": "frontend-app-shell"
+    },
+    "src/shared/types/index.ts": {
+      "hash": "c9af6a68",
+      "imports": [
+        {
+          "source": "src/shared/types",
+          "names": [
+            "..."
+          ],
+          "type": "named"
+        }
+      ],
+      "exports": [
+        "CaseStatus",
+        "PriorityLevel",
+        "PatientCase",
+        "FacilityType",
+        "Facility",
+        "FacilityCapabilities",
+        "InsuranceAcceptedStatus",
+        "FacilityInsuranceRule",
+        "FacilityContact",
+        "UserRole",
+        "UserStatus",
+        "User",
+        "OutreachActionType",
+        "OutreachChannel",
+        "OutreachApprovalStatus",
+        "OutreachAction",
+        "OutreachTemplateType",
+        "OutreachTemplate",
+        "RecommendedLevelOfCare",
+        "ReviewStatus",
+        "ClinicalAssessment",
+        "MatchGeneratedBy",
+        "FacilityMatch",
+        "ImportJobStatus",
+        "ImportJob",
+        "OutcomeType",
+        "PlacementOutcome",
+        "AuditEvent"
+      ],
+      "node": null
+    }
+  },
+  "symbols": {
+    "default": [
+      {
+        "file": "frontend/jest.config.ts",
+        "type": "export"
+      },
+      {
+        "file": "frontend/openapi-ts.config.ts",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/app/admin/page.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/app/analytics/page.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/app/cases/[case_id]/page.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/app/dashboard/page.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/app/facilities/page.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/app/facilities/[facility_id]/page.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/app/intake/import/page.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/app/intake/page.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/app/layout.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/app/login/page.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/app/outreach/page.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/app/page.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/app/queue/page.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/components/ActivityTimeline.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/components/CaseTable.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/components/ClinicalAssessmentForm.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/components/DraftEditor.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/components/FacilityCard.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/components/FilterBar.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/components/Sidebar.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/components/StatusBadge.tsx",
+        "type": "export"
+      },
+      {
+        "file": "frontend/tailwind.config.ts",
+        "type": "export"
+      }
+    ],
+    "middleware": [
+      {
+        "file": "frontend/middleware.ts",
+        "type": "export"
+      }
+    ],
+    "config": [
+      {
+        "file": "frontend/middleware.ts",
+        "type": "export"
+      }
+    ],
+    "AnalyticsDashboard": [
+      {
+        "file": "frontend/src/app/analytics/AnalyticsDashboard.tsx",
+        "type": "export"
+      }
+    ],
+    "DashboardKPIs": [
+      {
+        "file": "frontend/src/app/dashboard/DashboardKPIs.tsx",
+        "type": "export"
+      }
+    ],
+    "metadata": [
+      {
+        "file": "frontend/src/app/layout.tsx",
+        "type": "export"
+      }
+    ],
+    "ClientConfig": [
+      {
+        "file": "frontend/src/client/index.ts",
+        "type": "export"
+      }
+    ],
+    "createApiClient": [
+      {
+        "file": "frontend/src/client/index.ts",
+        "type": "export"
+      }
+    ],
+    "ApiError": [
+      {
+        "file": "frontend/src/client/index.ts",
+        "type": "export"
+      }
+    ],
+    "apiClient": [
+      {
+        "file": "frontend/src/client/index.ts",
+        "type": "export"
+      }
+    ],
+    "TimelineEvent": [
+      {
+        "file": "frontend/src/components/ActivityTimeline.tsx",
+        "type": "export"
+      }
+    ],
+    "ActivityTimeline": [
+      {
+        "file": "frontend/src/components/ActivityTimeline.tsx",
+        "type": "export"
+      }
+    ],
+    "CaseTableFilters": [
+      {
+        "file": "frontend/src/components/CaseTable.tsx",
+        "type": "export"
+      }
+    ],
+    "useCaseTableFilters": [
+      {
+        "file": "frontend/src/components/CaseTable.tsx",
+        "type": "export"
+      }
+    ],
+    "CaseTable": [
+      {
+        "file": "frontend/src/components/CaseTable.tsx",
+        "type": "export"
+      }
+    ],
+    "ClinicalAssessmentFormData": [
+      {
+        "file": "frontend/src/components/ClinicalAssessmentForm.tsx",
+        "type": "export"
+      }
+    ],
+    "ClinicalAssessmentFormProps": [
+      {
+        "file": "frontend/src/components/ClinicalAssessmentForm.tsx",
+        "type": "export"
+      }
+    ],
+    "ClinicalAssessmentForm": [
+      {
+        "file": "frontend/src/components/ClinicalAssessmentForm.tsx",
+        "type": "export"
+      }
+    ],
+    "DraftTemplateOption": [
+      {
+        "file": "frontend/src/components/DraftEditor.tsx",
+        "type": "export"
+      }
+    ],
+    "ExistingDraft": [
+      {
+        "file": "frontend/src/components/DraftEditor.tsx",
+        "type": "export"
+      }
+    ],
+    "DraftEditorProps": [
+      {
+        "file": "frontend/src/components/DraftEditor.tsx",
+        "type": "export"
+      }
+    ],
+    "DraftFormData": [
+      {
+        "file": "frontend/src/components/DraftEditor.tsx",
+        "type": "export"
+      }
+    ],
+    "DraftEditor": [
+      {
+        "file": "frontend/src/components/DraftEditor.tsx",
+        "type": "export"
+      }
+    ],
+    "FacilityCardData": [
+      {
+        "file": "frontend/src/components/FacilityCard.tsx",
+        "type": "export"
+      }
+    ],
+    "FacilityCard": [
+      {
+        "file": "frontend/src/components/FacilityCard.tsx",
+        "type": "export"
+      }
+    ],
+    "FilterBar": [
+      {
+        "file": "frontend/src/components/FilterBar.tsx",
+        "type": "export"
+      }
+    ],
+    "NavItem": [
+      {
+        "file": "frontend/src/components/Sidebar.tsx",
+        "type": "export"
+      }
+    ],
+    "Sidebar": [
+      {
+        "file": "frontend/src/components/Sidebar.tsx",
+        "type": "export"
+      }
+    ],
+    "CaseStatus": [
+      {
+        "file": "frontend/src/components/StatusBadge.tsx",
+        "type": "export"
+      },
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "StatusConfigEntry": [
+      {
+        "file": "frontend/src/components/StatusBadge.tsx",
+        "type": "export"
+      }
+    ],
+    "STATUS_CONFIG": [
+      {
+        "file": "frontend/src/components/StatusBadge.tsx",
+        "type": "export"
+      }
+    ],
+    "assertNeverStatus": [
+      {
+        "file": "frontend/src/components/StatusBadge.tsx",
+        "type": "export"
+      }
+    ],
+    "StatusBadge": [
+      {
+        "file": "frontend/src/components/StatusBadge.tsx",
+        "type": "export"
+      }
+    ],
+    "BadgeProps": [
+      {
+        "file": "frontend/src/components/ui/badge.tsx",
+        "type": "export"
+      }
+    ],
+    "Badge": [
+      {
+        "file": "frontend/src/components/ui/badge.tsx",
+        "type": "export"
+      }
+    ],
+    "badgeVariants": [
+      {
+        "file": "frontend/src/components/ui/badge.tsx",
+        "type": "export"
+      }
+    ],
+    "ButtonProps": [
+      {
+        "file": "frontend/src/components/ui/button.tsx",
+        "type": "export"
+      }
+    ],
+    "Button": [
+      {
+        "file": "frontend/src/components/ui/button.tsx",
+        "type": "export"
+      }
+    ],
+    "buttonVariants": [
+      {
+        "file": "frontend/src/components/ui/button.tsx",
+        "type": "export"
+      }
+    ],
+    "Card": [
+      {
+        "file": "frontend/src/components/ui/card.tsx",
+        "type": "export"
+      }
+    ],
+    "CardHeader": [
+      {
+        "file": "frontend/src/components/ui/card.tsx",
+        "type": "export"
+      }
+    ],
+    "CardFooter": [
+      {
+        "file": "frontend/src/components/ui/card.tsx",
+        "type": "export"
+      }
+    ],
+    "CardTitle": [
+      {
+        "file": "frontend/src/components/ui/card.tsx",
+        "type": "export"
+      }
+    ],
+    "CardDescription": [
+      {
+        "file": "frontend/src/components/ui/card.tsx",
+        "type": "export"
+      }
+    ],
+    "CardContent": [
+      {
+        "file": "frontend/src/components/ui/card.tsx",
+        "type": "export"
+      }
+    ],
+    "Checkbox": [
+      {
+        "file": "frontend/src/components/ui/checkbox.tsx",
+        "type": "export"
+      }
+    ],
+    "useFormField": [
+      {
+        "file": "frontend/src/components/ui/form.tsx",
+        "type": "export"
+      }
+    ],
+    "Form": [
+      {
+        "file": "frontend/src/components/ui/form.tsx",
+        "type": "export"
+      }
+    ],
+    "FormItem": [
+      {
+        "file": "frontend/src/components/ui/form.tsx",
+        "type": "export"
+      }
+    ],
+    "FormLabel": [
+      {
+        "file": "frontend/src/components/ui/form.tsx",
+        "type": "export"
+      }
+    ],
+    "FormControl": [
+      {
+        "file": "frontend/src/components/ui/form.tsx",
+        "type": "export"
+      }
+    ],
+    "FormDescription": [
+      {
+        "file": "frontend/src/components/ui/form.tsx",
+        "type": "export"
+      }
+    ],
+    "FormMessage": [
+      {
+        "file": "frontend/src/components/ui/form.tsx",
+        "type": "export"
+      }
+    ],
+    "FormField": [
+      {
+        "file": "frontend/src/components/ui/form.tsx",
+        "type": "export"
+      }
+    ],
+    "InputProps": [
+      {
+        "file": "frontend/src/components/ui/input.tsx",
+        "type": "export"
+      }
+    ],
+    "Input": [
+      {
+        "file": "frontend/src/components/ui/input.tsx",
+        "type": "export"
+      }
+    ],
+    "Label": [
+      {
+        "file": "frontend/src/components/ui/label.tsx",
+        "type": "export"
+      }
+    ],
+    "Select": [
+      {
+        "file": "frontend/src/components/ui/select.tsx",
+        "type": "export"
+      }
+    ],
+    "SelectGroup": [
+      {
+        "file": "frontend/src/components/ui/select.tsx",
+        "type": "export"
+      }
+    ],
+    "SelectValue": [
+      {
+        "file": "frontend/src/components/ui/select.tsx",
+        "type": "export"
+      }
+    ],
+    "SelectTrigger": [
+      {
+        "file": "frontend/src/components/ui/select.tsx",
+        "type": "export"
+      }
+    ],
+    "SelectContent": [
+      {
+        "file": "frontend/src/components/ui/select.tsx",
+        "type": "export"
+      }
+    ],
+    "SelectLabel": [
+      {
+        "file": "frontend/src/components/ui/select.tsx",
+        "type": "export"
+      }
+    ],
+    "SelectItem": [
+      {
+        "file": "frontend/src/components/ui/select.tsx",
+        "type": "export"
+      }
+    ],
+    "SelectSeparator": [
+      {
+        "file": "frontend/src/components/ui/select.tsx",
+        "type": "export"
+      }
+    ],
+    "SelectScrollUpButton": [
+      {
+        "file": "frontend/src/components/ui/select.tsx",
+        "type": "export"
+      }
+    ],
+    "SelectScrollDownButton": [
+      {
+        "file": "frontend/src/components/ui/select.tsx",
+        "type": "export"
+      }
+    ],
+    "Separator": [
+      {
+        "file": "frontend/src/components/ui/separator.tsx",
+        "type": "export"
+      }
+    ],
+    "Sheet": [
+      {
+        "file": "frontend/src/components/ui/sheet.tsx",
+        "type": "export"
+      }
+    ],
+    "SheetPortal": [
+      {
+        "file": "frontend/src/components/ui/sheet.tsx",
+        "type": "export"
+      }
+    ],
+    "SheetOverlay": [
+      {
+        "file": "frontend/src/components/ui/sheet.tsx",
+        "type": "export"
+      }
+    ],
+    "SheetTrigger": [
+      {
+        "file": "frontend/src/components/ui/sheet.tsx",
+        "type": "export"
+      }
+    ],
+    "SheetClose": [
+      {
+        "file": "frontend/src/components/ui/sheet.tsx",
+        "type": "export"
+      }
+    ],
+    "SheetContent": [
+      {
+        "file": "frontend/src/components/ui/sheet.tsx",
+        "type": "export"
+      }
+    ],
+    "SheetHeader": [
+      {
+        "file": "frontend/src/components/ui/sheet.tsx",
+        "type": "export"
+      }
+    ],
+    "SheetFooter": [
+      {
+        "file": "frontend/src/components/ui/sheet.tsx",
+        "type": "export"
+      }
+    ],
+    "SheetTitle": [
+      {
+        "file": "frontend/src/components/ui/sheet.tsx",
+        "type": "export"
+      }
+    ],
+    "SheetDescription": [
+      {
+        "file": "frontend/src/components/ui/sheet.tsx",
+        "type": "export"
+      }
+    ],
+    "Tabs": [
+      {
+        "file": "frontend/src/components/ui/tabs.tsx",
+        "type": "export"
+      }
+    ],
+    "TabsList": [
+      {
+        "file": "frontend/src/components/ui/tabs.tsx",
+        "type": "export"
+      }
+    ],
+    "TabsTrigger": [
+      {
+        "file": "frontend/src/components/ui/tabs.tsx",
+        "type": "export"
+      }
+    ],
+    "TabsContent": [
+      {
+        "file": "frontend/src/components/ui/tabs.tsx",
+        "type": "export"
+      }
+    ],
+    "TextareaProps": [
+      {
+        "file": "frontend/src/components/ui/textarea.tsx",
+        "type": "export"
+      }
+    ],
+    "Textarea": [
+      {
+        "file": "frontend/src/components/ui/textarea.tsx",
+        "type": "export"
+      }
+    ],
+    "type ToastProps": [
+      {
+        "file": "frontend/src/components/ui/toast.tsx",
+        "type": "export"
+      }
+    ],
+    "type ToastActionElement": [
+      {
+        "file": "frontend/src/components/ui/toast.tsx",
+        "type": "export"
+      }
+    ],
+    "ToastProvider": [
+      {
+        "file": "frontend/src/components/ui/toast.tsx",
+        "type": "export"
+      }
+    ],
+    "ToastViewport": [
+      {
+        "file": "frontend/src/components/ui/toast.tsx",
+        "type": "export"
+      }
+    ],
+    "Toast": [
+      {
+        "file": "frontend/src/components/ui/toast.tsx",
+        "type": "export"
+      }
+    ],
+    "ToastTitle": [
+      {
+        "file": "frontend/src/components/ui/toast.tsx",
+        "type": "export"
+      }
+    ],
+    "ToastDescription": [
+      {
+        "file": "frontend/src/components/ui/toast.tsx",
+        "type": "export"
+      }
+    ],
+    "ToastClose": [
+      {
+        "file": "frontend/src/components/ui/toast.tsx",
+        "type": "export"
+      }
+    ],
+    "ToastAction": [
+      {
+        "file": "frontend/src/components/ui/toast.tsx",
+        "type": "export"
+      }
+    ],
+    "createClient": [
+      {
+        "file": "frontend/src/lib/supabase/client.ts",
+        "type": "export"
+      },
+      {
+        "file": "frontend/src/lib/supabase/server.ts",
+        "type": "export"
+      }
+    ],
+    "cn": [
+      {
+        "file": "frontend/src/lib/utils.ts",
+        "type": "export"
+      }
+    ],
+    "formatDate": [
+      {
+        "file": "frontend/src/lib/utils.ts",
+        "type": "export"
+      }
+    ],
+    "formatDateTime": [
+      {
+        "file": "frontend/src/lib/utils.ts",
+        "type": "export"
+      }
+    ],
+    "daysElapsed": [
+      {
+        "file": "frontend/src/lib/utils.ts",
+        "type": "export"
+      }
+    ],
+    "toTitleCase": [
+      {
+        "file": "frontend/src/lib/utils.ts",
+        "type": "export"
+      }
+    ],
+    "PriorityLevel": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "PatientCase": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "FacilityType": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "Facility": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "FacilityCapabilities": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "InsuranceAcceptedStatus": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "FacilityInsuranceRule": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "FacilityContact": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "UserRole": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "UserStatus": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "User": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "OutreachActionType": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "OutreachChannel": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "OutreachApprovalStatus": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "OutreachAction": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "OutreachTemplateType": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "OutreachTemplate": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "RecommendedLevelOfCare": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "ReviewStatus": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "ClinicalAssessment": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "MatchGeneratedBy": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "FacilityMatch": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "ImportJobStatus": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "ImportJob": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "OutcomeType": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "PlacementOutcome": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ],
+    "AuditEvent": [
+      {
+        "file": "src/shared/types/index.ts",
+        "type": "export"
+      }
+    ]
+  },
+  "edges": [
+    {
+      "from": "frontend/src/components/__tests__/ClinicalAssessmentForm.test.tsx",
+      "to": "frontend/src/components/ClinicalAssessmentForm.tsx",
+      "symbols": [
+        "ClinicalAssessmentForm"
+      ],
+      "type": "named"
+    },
+    {
+      "from": "frontend/src/components/__tests__/StatusBadge.test.tsx",
+      "to": "frontend/src/components/StatusBadge.tsx",
+      "symbols": [
+        "StatusBadge",
+        "STATUS_CONFIG",
+        "assertNeverStatus"
+      ],
+      "type": "named"
+    }
+  ],
+  "builtAt": "2026-04-12T19:15:09.732Z",
+  "_stats": {
+    "filesIndexed": 50,
+    "symbolsTracked": 126,
+    "edgesFound": 2
+  }
+}

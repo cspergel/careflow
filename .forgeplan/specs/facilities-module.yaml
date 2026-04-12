@@ -1,0 +1,215 @@
+node: "facilities-module"
+name: "Facilities Module"
+spec_type: "prescriptive"
+description: >
+  Facility directory CRUD for the post-acute placement platform. Manages the
+  Facility master record (admin-only creates and patches), the FacilityCapabilities
+  capability matrix (PUT by admin or placement_coordinator, upsert with
+  last_verified_at update), FacilityInsuranceRule payer-acceptance rules (admin-only
+  creates; admin+coordinator patches), FacilityContact records including Phase 2 voice
+  fields stored now for forward compatibility, and facility_preferences ranked by
+  global, market, or hospital scope. All capability boolean flags mirror the field
+  names on ClinicalAssessment exactly so the matching engine can perform direct
+  field-name lookups without a translation layer. RLS policies enforce organization_id
+  on all facility tables. last_verified_at is updated whenever capabilities or
+  insurance rules are modified. Read access to the facility directory is granted to
+  all authenticated roles.
+inputs:
+  - name: "facility_payload"
+    type: "FacilityCreateRequest"
+    required: true
+    validation: "facility_name required; facility_type must be snf | irf | ltach; caller role_key must be admin"
+  - name: "facility_patch_payload"
+    type: "FacilityPatchRequest"
+    required: false
+    validation: "at least one field present; caller role_key must be admin"
+  - name: "capabilities_payload"
+    type: "FacilityCapabilitiesUpsertRequest"
+    required: true
+    validation: "all 18 capability boolean flags must be present; caller role_key must be admin or placement_coordinator"
+  - name: "insurance_rule_payload"
+    type: "InsuranceRuleCreateRequest"
+    required: true
+    validation: "payer_id required; accepted_status must be accepted | conditional | not_accepted; caller role_key must be admin"
+  - name: "insurance_rule_patch_payload"
+    type: "InsuranceRulePatchRequest"
+    required: false
+    validation: "at least one of accepted_status, notes present; caller role_key must be admin or placement_coordinator"
+  - name: "auth_user"
+    type: "$shared.User"
+    required: true
+    validation: "authenticated; role_key checked per-endpoint per role restrictions"
+outputs:
+  - name: "facility"
+    type: "$shared.Facility"
+  - name: "facility_capabilities"
+    type: "$shared.FacilityCapabilities"
+  - name: "facility_insurance_rule"
+    type: "$shared.FacilityInsuranceRule"
+  - name: "facility_contact"
+    type: "$shared.FacilityContact"
+  - name: "audit_event"
+    type: "$shared.AuditEvent"
+shared_dependencies:
+  - Facility
+  - FacilityCapabilities
+  - FacilityInsuranceRule
+  - FacilityContact
+  - User
+  - AuditEvent
+data_models:
+  FacilityCreateRequest:
+    facility_name: "string — required"
+    facility_type: "string — enum: snf | irf | ltach — required"
+    address_line_1: "string — nullable"
+    city: "string — nullable"
+    county: "string — nullable"
+    state: "string — nullable"
+    zip: "string — nullable"
+    latitude: "numeric — nullable"
+    longitude: "numeric — nullable"
+    notes: "string — nullable"
+  FacilityPatchRequest:
+    facility_name: "string — nullable"
+    facility_type: "string — enum: snf | irf | ltach — nullable"
+    address_line_1: "string — nullable"
+    city: "string — nullable"
+    county: "string — nullable"
+    state: "string — nullable"
+    zip: "string — nullable"
+    latitude: "numeric — nullable"
+    longitude: "numeric — nullable"
+    active_status: "boolean — nullable"
+    notes: "string — nullable"
+  FacilityCapabilitiesUpsertRequest:
+    accepts_snf: "boolean"
+    accepts_irf: "boolean"
+    accepts_ltach: "boolean"
+    accepts_trach: "boolean"
+    accepts_vent: "boolean"
+    accepts_hd: "boolean"
+    in_house_hemodialysis: "boolean"
+    accepts_peritoneal_dialysis: "boolean"
+    accepts_wound_vac: "boolean"
+    accepts_iv_antibiotics: "boolean"
+    accepts_tpn: "boolean"
+    accepts_bariatric: "boolean"
+    accepts_behavioral_complexity: "boolean"
+    accepts_memory_care: "boolean"
+    accepts_isolation_cases: "boolean"
+    accepts_oxygen_therapy: "boolean"
+    weekend_admissions: "boolean"
+    after_hours_admissions: "boolean"
+  InsuranceRuleCreateRequest:
+    payer_id: "uuid — required"
+    payer_name: "string — required (denormalized for display)"
+    accepted_status: "string — enum: accepted | conditional | not_accepted — required"
+    notes: "string — nullable"
+  InsuranceRulePatchRequest:
+    accepted_status: "string — enum: accepted | conditional | not_accepted — nullable"
+    notes: "string — nullable"
+  FacilityContactCreateRequest:
+    contact_name: "string — required"
+    title: "string — nullable"
+    phone: "string — nullable"
+    phone_extension: "string — nullable"
+    best_call_window: "string — nullable"
+    phone_contact_name: "string — nullable"
+    email: "string — nullable"
+    is_primary: "boolean — default false"
+  FacilityPreference:
+    id: "uuid"
+    facility_id: "uuid"
+    scope: "string — enum: global | market | hospital"
+    scope_reference_id: "uuid — nullable (hospital_reference.id for hospital scope; market id for market scope)"
+    preference_rank: "integer"
+    created_at: "timestamp"
+    updated_at: "timestamp"
+  FacilityDirectoryResponse:
+    facilities: "list of Facility with capabilities summary"
+    total: "integer"
+    page: "integer"
+    page_size: "integer"
+interfaces:
+  - target_node: "core-infrastructure"
+    type: "outbound"
+    contract: "Provides Facility, FacilityCapabilities, FacilityInsuranceRule, FacilityContact ORM models, AsyncSessionLocal, and get_auth_context"
+  - target_node: "auth-module"
+    type: "outbound"
+    contract: "Exports require_role Depends(); facilities-module imports to restrict facility create/update to admin and capability updates to admin or placement_coordinator"
+  - target_node: "matching-module"
+    type: "outbound"
+    contract: "matching-module reads FacilityCapabilities (all 18 boolean flags) and FacilityInsuranceRule records to perform hard-exclusion scoring; field names must exactly mirror ClinicalAssessment for direct lookup"
+  - target_node: "outreach-module"
+    type: "outbound"
+    contract: "outreach-module reads FacilityContact records (including Phase 2 voice fields) to address outreach communications"
+acceptance_criteria:
+  - id: AC1
+    description: "GET /api/v1/facilities returns a paginated facility directory accessible to all authenticated roles, with filters for facility_type, state, county, capability flags, and insurance payer"
+    test: "pytest: seed 5 facilities; GET /facilities as intake_staff → assert 200 and all 5 returned; GET /facilities?facility_type=snf → assert only SNF facilities returned; GET /facilities?accepts_trach=true → assert only facilities with accepts_trach=true returned"
+  - id: AC2
+    description: "POST /api/v1/facilities creates a Facility record and is restricted to admin only; all other roles receive 403"
+    test: "pytest: POST /facilities as admin with valid payload → assert 201 and Facility record persisted; POST /facilities as placement_coordinator → assert 403; POST /facilities as intake_staff → assert 403; POST /facilities as manager → assert 403"
+  - id: AC3
+    description: "GET /api/v1/facilities/{facility_id} returns full facility profile including capabilities, contacts, insurance_rules, and preferences; accessible to all authenticated roles"
+    test: "pytest: seed facility with capabilities, 2 contacts, 1 insurance rule, 1 preference; GET /facilities/{id} as clinical_reviewer → assert 200 and all nested objects present in response"
+  - id: AC4
+    description: "PATCH /api/v1/facilities/{facility_id} updates facility profile fields and is restricted to admin only; all other roles receive 403"
+    test: "pytest: PATCH /facilities/{id} as admin with facility_name=New Name → assert 200 and name updated; PATCH as placement_coordinator → assert 403; PATCH as manager → assert 403"
+  - id: AC5
+    description: "PUT /api/v1/facilities/{facility_id}/capabilities creates or replaces FacilityCapabilities, sets last_verified_at to current timestamp, stores all 18 boolean flags; permitted for admin or placement_coordinator; returns 403 for intake_staff, clinical_reviewer, and read_only"
+    test: "pytest: PUT /facilities/{id}/capabilities as placement_coordinator with all 18 flags → assert 200, all flags stored, last_verified_at set to within 2 seconds of now; PUT again with different values → assert upsert overwrites; PUT as clinical_reviewer → assert 403; PUT as intake_staff → assert 403"
+  - id: AC6
+    description: "GET /api/v1/facilities/{facility_id}/insurance-rules lists all FacilityInsuranceRule records for the facility; accessible to all authenticated roles"
+    test: "pytest: seed 3 insurance rules for a facility; GET /facilities/{id}/insurance-rules as read_only → assert 200 and 3 rules returned"
+  - id: AC7
+    description: "POST /api/v1/facilities/{facility_id}/insurance-rules creates a FacilityInsuranceRule and is restricted to admin only; returns 403 for all other roles"
+    test: "pytest: POST /facilities/{id}/insurance-rules as admin with payer_id, accepted_status=accepted → assert 201 and rule persisted with last_verified_at set; POST as placement_coordinator → assert 403"
+  - id: AC8
+    description: "PATCH /api/v1/insurance-rules/{rule_id} updates accepted_status and/or notes and updates last_verified_at; permitted for admin or placement_coordinator; returns 403 for all other roles"
+    test: "pytest: PATCH /insurance-rules/{id} as placement_coordinator with accepted_status=conditional → assert 200, accepted_status updated, last_verified_at refreshed; PATCH as clinical_reviewer → assert 403; PATCH as intake_staff → assert 403"
+  - id: AC9
+    description: "FacilityCapabilities stores all 18 boolean flags with names that exactly mirror the corresponding ClinicalAssessment boolean field names"
+    test: "pytest: retrieve FacilityCapabilities for a facility and assert keys include: accepts_snf, accepts_irf, accepts_ltach, accepts_trach, accepts_vent, accepts_hd, in_house_hemodialysis, accepts_peritoneal_dialysis, accepts_wound_vac, accepts_iv_antibiotics, accepts_tpn, accepts_bariatric, accepts_behavioral_complexity, accepts_memory_care, accepts_isolation_cases, accepts_oxygen_therapy, weekend_admissions, after_hours_admissions"
+  - id: AC10
+    description: "FacilityContact stores all Phase 2 voice fields (phone_extension, best_call_window, phone_contact_name) in addition to base contact fields"
+    test: "pytest: POST /facilities/{id}/contacts with phone_extension=101, best_call_window=9am-11am EST, phone_contact_name=Jane → assert 201 and all three Phase 2 fields persisted and returned in GET /facilities/{id}"
+  - id: AC11
+    description: "facility_preferences support global, market, and hospital scope with a preference_rank value"
+    test: "pytest: create preferences with scope=global rank=1, scope=hospital scope_reference_id=X rank=2; GET /facilities/{id} → assert both preference records returned with correct scope and rank"
+  - id: AC12
+    description: "last_verified_at is updated whenever capabilities or insurance rules are edited"
+    test: "pytest: record last_verified_at before PUT capabilities; PUT capabilities → assert last_verified_at > prior value; PATCH insurance-rule → assert last_verified_at on the rule record refreshed"
+  - id: AC13
+    description: "Supabase RLS policies enforce organization_id on all facility tables; a request presenting a token for org A cannot read or write org B facilities"
+    test: "pytest integration: authenticate as org A user; attempt GET /facilities/{id} for an org B facility_id → assert 404 or 403 (RLS prevents row visibility); attempt POST /facilities with org B organization_id → assert row not visible to org B user after insert"
+constraints:
+  - "POST /facilities and PATCH /facilities/{id} are admin-only; any other role_key MUST return 403 before the handler executes."
+  - "PUT /facilities/{facility_id}/capabilities is restricted to admin and placement_coordinator; intake_staff, clinical_reviewer, and read_only MUST receive 403."
+  - "POST /facilities/{facility_id}/insurance-rules is admin-only; all other roles MUST receive 403."
+  - "PATCH /insurance-rules/{rule_id} is restricted to admin and placement_coordinator; all other roles MUST receive 403."
+  - "FacilityCapabilities field names MUST exactly match the corresponding ClinicalAssessment boolean field names; renaming either model requires a coordinated change to both."
+  - "last_verified_at MUST be set to the current UTC timestamp on every PUT capabilities and every POST or PATCH insurance-rule operation."
+  - "Supabase RLS policies MUST be defined on facilities, facility_capabilities, facility_insurance_rules, facility_contacts, and facility_preferences tables enforcing organization_id isolation."
+  - "Database connection MUST use NullPool and statement_cache_size=0 for Supabase compatibility."
+  - "FacilityContact Phase 2 voice fields (phone_extension, best_call_window, phone_contact_name) MUST be stored in the schema now even though they are not surfaced in Phase 1 UI, to avoid a future migration."
+  - "All facility writes MUST produce an AuditEvent record."
+non_goals:
+  - "This node does not implement the matching scoring engine or produce FacilityMatch records."
+  - "This node does not manage outreach actions or outreach templates."
+  - "This node does not implement Phase 2 voice calling or AI-driven outreach."
+  - "This node does not manage patient cases or clinical assessments."
+  - "This node does not expose analytics or reporting dashboards."
+  - "This node does not implement self-service facility onboarding; all creates are admin-gated."
+failure_modes:
+  - "FacilityCapabilities field name diverges from ClinicalAssessment (e.g. accepts_oxygen vs accepts_oxygen_therapy), silently breaking hard-exclusion matching for all affected cases without an error at query time."
+  - "PUT capabilities performs an INSERT instead of upsert, causing a unique-constraint violation on the second call for a facility that already has a capabilities row."
+  - "last_verified_at is not updated on PATCH insurance-rules, leaving stale verification timestamps that mislead coordinators about data freshness."
+  - "RLS policy missing on facility_preferences table, allowing a coordinator in org A to read or overwrite preference rankings belonging to org B."
+  - "Role check for PUT capabilities is implemented as placement_coordinator only (forgetting admin), causing admin users to receive unexpected 403 responses."
+  - "FacilityContact Phase 2 voice fields are omitted from the DB schema, requiring a breaking migration when Phase 2 is introduced."
+  - "GET /facilities returns all facilities across all organizations when RLS is disabled in development and the application-layer org filter is accidentally omitted."
+file_scope: "placementops/modules/facilities/**"
+depends_on:
+  - "core-infrastructure"
+  - "auth-module"
