@@ -54,6 +54,7 @@ from placementops.modules.outreach.schemas import (
     OutreachActionCreate,
     OutreachActionPatch,
 )
+from placementops.modules.outreach.delivery import deliver_action
 from placementops.modules.outreach.template_renderer import (
     render_template,
     validate_template_variables,
@@ -800,6 +801,18 @@ async def mark_sent(
         new_status="sent",
         metadata={"action_id": action.id},
     )
+
+    # Attempt actual delivery via Resend / Twilio (best-effort; never blocks the sent record)
+    try:
+        new_delivery_status = await deliver_action(session, action)
+    except Exception as exc:  # pragma: no cover
+        logger.error("Unexpected error in deliver_action for action %s: %s", action_id, exc)
+        new_delivery_status = "failed"
+
+    if new_delivery_status != action.delivery_status:
+        action.delivery_status = new_delivery_status
+        await session.commit()
+        await session.refresh(action)
 
     return action
 
