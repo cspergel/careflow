@@ -4,7 +4,7 @@
 **Tech Stack:** {"runtime":"python+node","language":"python+typescript","database":"supabase","orm":"sqlalchemy","api_framework":"fastapi","auth":"supabase-auth","test_framework":"pytest+jest","frontend":"next.js","ui_library":"shadcn/ui+tailwind","background_jobs":"fastapi-backgroundtasks","deployment":"docker","test_command":"","dev_port":null,"mock_mode":false}
 **Nodes:** core-infrastructure, auth-module, intake-module, clinical-module, facilities-module, matching-module, outreach-module, outcomes-module, analytics-module, admin-surfaces, frontend-app-shell
 
-**Last Compiled:** 2026-04-12T19:12:13.265Z
+**Last Compiled:** 2026-04-12T21:41:33.866Z
 **Freshness:** stale
 
 ## Node Health

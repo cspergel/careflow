@@ -224,28 +224,27 @@ def compute_hard_exclusions(
         )
 
     # 3. accepts_hd (hemodialysis needed) → accepts_hd
-    # Also: if in_house_hemodialysis required, BOTH accepts_hd AND in_house_hemodialysis required
-    assessment_hd = getattr(assessment, "accepts_hd", False)
-    assessment_in_house_hd = getattr(assessment, "in_house_hemodialysis", False)
-    if assessment_hd:
-        if not getattr(capabilities, "accepts_hd", False):
-            blockers.append(
-                BlockerDetail(
-                    field="accepts_hd",
-                    reason="Patient requires hemodialysis; facility does not accept HD patients",
-                )
+    if getattr(assessment, "accepts_hd", False) and not getattr(capabilities, "accepts_hd", False):
+        blockers.append(
+            BlockerDetail(
+                field="accepts_hd",
+                reason="Patient requires hemodialysis; facility does not accept HD patients",
             )
-        # Dual check: if in-house HD specifically required (constraint)
-        if assessment_in_house_hd and not getattr(capabilities, "in_house_hemodialysis", False):
-            blockers.append(
-                BlockerDetail(
-                    field="in_house_hemodialysis",
-                    reason=(
-                        "Patient requires in-house hemodialysis; "
-                        "facility does not have in-house HD capability"
-                    ),
-                )
+        )
+
+    # 3b. in_house_hemodialysis → in_house_hemodialysis (independent check)
+    if getattr(assessment, "in_house_hemodialysis", False) and not getattr(
+        capabilities, "in_house_hemodialysis", False
+    ):
+        blockers.append(
+            BlockerDetail(
+                field="in_house_hemodialysis",
+                reason=(
+                    "Patient requires in-house hemodialysis; "
+                    "facility does not have in-house HD capability"
+                ),
             )
+        )
 
     # 4. accepts_peritoneal_dialysis → accepts_peritoneal_dialysis
     if getattr(assessment, "accepts_peritoneal_dialysis", False) and not getattr(

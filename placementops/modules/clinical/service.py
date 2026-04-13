@@ -164,9 +164,17 @@ async def assign_clinical_reviewer(
     case = await _get_case_scoped(session, case_id, organization_id)
     _assert_not_closed(case)
 
-    # Validate reviewer user exists
+    # Validate reviewer user exists within the same organisation (AC2, F6).
+    # Both conditions are combined so that a user from a foreign org is
+    # indistinguishable from a non-existent user (HTTP 404, not 403), which
+    # avoids leaking whether a given user_id exists in another tenant.
     user_result = await session.execute(
-        select(User).where(User.id == str(reviewer_user_id))
+        select(User).where(
+            and_(
+                User.id == str(reviewer_user_id),
+                User.organization_id == str(organization_id),
+            )
+        )
     )
     reviewer = user_result.scalar_one_or_none()
     if reviewer is None:

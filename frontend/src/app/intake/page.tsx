@@ -129,7 +129,7 @@ export default function IntakePage() {
       const data = await apiClient.fetch<{
         cases: PatientCase[]
         total: number
-      }>("/api/v1/cases?status=new,intake_in_progress&limit=50")
+      }>("/api/v1/cases?status=new&status=intake_in_progress&page_size=50")
       setCases(data.cases)
       setTotalCount(data.total)
     } catch (err) {
@@ -206,7 +206,9 @@ export default function IntakePage() {
           </div>
         )}
 
+        {/* F29: pageKey must match CaseTable's pageKey so filter URL params stay in sync */}
         <FilterBar
+          pageKey="intake"
           statusOptions={[
             "new",
             "intake_in_progress",

@@ -19,3 +19,4 @@
 - [2026-04-12T20:39:45.400Z] Created: `placementops/modules/clinical/schemas.py`
 - [2026-04-12T20:39:50.527Z] Created: `placementops/modules/clinical/router.py`
 - [2026-04-12T20:39:56.115Z] Created: `placementops/modules/clinical/router.py`
+- [2026-04-13T00:34:33.925Z] Created: `placementops/modules/clinical/service.py`

@@ -3,6 +3,7 @@
 # @forgeplan-spec: AC3
 # @forgeplan-spec: AC9
 # @forgeplan-spec: AC10
+# @forgeplan-spec: AC13
 """
 Pydantic v2 schemas for outreach-module request/response models.
 """
@@ -118,6 +119,23 @@ class OutreachTemplateResponse(BaseModel):
 
 
 class TemplateListResponse(BaseModel):
-    """Response schema for GET /api/v1/templates/outreach (AC10)."""
+    """Response schema for GET /api/v1/templates/outreach (AC10).
+
+    F11: Field is named "templates" (not "items") to reflect the domain object.
+    OutreachQueueResponse uses "items" because it is a generic paginated queue.
+    Both naming conventions are intentional; no inconsistency exists within this module.
+    """
 
     templates: list[OutreachTemplateResponse]
+
+
+class CaseOutreachActionListResponse(BaseModel):
+    """Response schema for GET /api/v1/cases/{case_id}/outreach-actions (F10).
+
+    Returns all outreach action records for a specific case, scoped to the
+    authenticated user's organization. Ordered newest-first.
+    """
+
+    items: list[OutreachActionResponse]
+    total: int
+    case_id: UUID

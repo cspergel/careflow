@@ -60,6 +60,9 @@ _MANAGER_ROLES = ("manager", "admin")
     "/queues/operations",
     response_model=PaginatedOperationsQueue,
     summary="Operational case queue with SLA aging flags",
+    # Role gate: placement_coordinator, clinical_reviewer, manager, admin
+    # @forgeplan-spec: AC1 — role check executes BEFORE any DB query via Depends
+    dependencies=[require_role(*_OPERATIONS_ROLES)],
 )
 async def get_operations_queue(
     status: str | None = Query(default=None, description="Filter by current_status"),
@@ -68,9 +71,7 @@ async def get_operations_queue(
     priority: str | None = Query(default=None, description="routine | urgent | emergent"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
-    # Role gate: placement_coordinator, clinical_reviewer, manager, admin
-    # @forgeplan-spec: AC1 — role check executes BEFORE any DB query via Depends
-    auth: AuthContext = require_role(*_OPERATIONS_ROLES),
+    auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_db),
 ) -> PaginatedOperationsQueue:
     """
@@ -99,13 +100,14 @@ async def get_operations_queue(
     "/queues/manager-summary",
     response_model=ManagerSummary,
     summary="Queue aging distribution and SLA breach cases",
+    # Role gate: manager, admin only
+    # @forgeplan-spec: AC1 — 403 for all other roles without touching DB
+    dependencies=[require_role(*_MANAGER_ROLES)],
 )
 async def get_manager_summary(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
-    # Role gate: manager, admin only
-    # @forgeplan-spec: AC1 — 403 for all other roles without touching DB
-    auth: AuthContext = require_role(*_MANAGER_ROLES),
+    auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_db),
 ) -> ManagerSummary:
     """
@@ -129,13 +131,14 @@ async def get_manager_summary(
     "/analytics/dashboard",
     response_model=DashboardReport,
     summary="Case volume, placement rate, and stage cycle times",
+    # Role gate: manager, admin only
+    # @forgeplan-spec: AC1 — 403 for all other roles without touching DB
+    dependencies=[require_role(*_MANAGER_ROLES)],
 )
 async def get_dashboard(
     date_from: date | None = Query(default=None, description="ISO 8601 date; defaults to 30 days ago"),
     date_to: date | None = Query(default=None, description="ISO 8601 date; defaults to today"),
-    # Role gate: manager, admin only
-    # @forgeplan-spec: AC1 — 403 for all other roles without touching DB
-    auth: AuthContext = require_role(*_MANAGER_ROLES),
+    auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_db),
 ) -> DashboardReport:
     """
@@ -160,13 +163,14 @@ async def get_dashboard(
     "/analytics/outreach-performance",
     response_model=OutreachPerformanceReport,
     summary="Accept/decline rates by facility and decline reason",
+    # Role gate: manager, admin only
+    # @forgeplan-spec: AC1 — 403 for all other roles without touching DB
+    dependencies=[require_role(*_MANAGER_ROLES)],
 )
 async def get_outreach_performance(
     date_from: date | None = Query(default=None, description="ISO 8601 date; defaults to 30 days ago"),
     date_to: date | None = Query(default=None, description="ISO 8601 date; defaults to today"),
-    # Role gate: manager, admin only
-    # @forgeplan-spec: AC1 — 403 for all other roles without touching DB
-    auth: AuthContext = require_role(*_MANAGER_ROLES),
+    auth: AuthContext = Depends(get_auth_context),
     session: AsyncSession = Depends(get_db),
 ) -> OutreachPerformanceReport:
     """

@@ -10,23 +10,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import type { UserRole } from "@shared/types"
-
-// @forgeplan-spec: AC1 — Role to landing page mapping
-function getRoleLanding(role: UserRole): string {
-  switch (role) {
-    case "intake_staff":
-      return "/intake"
-    case "clinical_reviewer":
-    case "placement_coordinator":
-      return "/queue"
-    case "manager":
-    case "admin":
-    case "read_only":
-      return "/dashboard"
-    default:
-      return "/dashboard"
-  }
-}
+// F30: Single source of truth for role→landing mapping; remove local duplicate
+import { getRoleLanding } from "@/lib/utils"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -86,7 +71,7 @@ export default function LoginPage() {
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground text-lg font-bold mb-3">
             PO
           </div>
-          <h1 className="text-2xl font-bold">PlacementOps</h1>
+          <h1 className="text-xl font-bold">PlacementOps</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Post-acute placement operating system
           </p>

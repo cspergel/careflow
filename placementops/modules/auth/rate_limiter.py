@@ -29,7 +29,14 @@ _TRUSTED_PROXY_HOST: str = os.environ.get("TRUSTED_PROXY_HOST", "127.0.0.1")
 _MAX_TRACKED_IPS: int = 10_000
 _EVICT_COUNT: int = 1_000
 
-# Module-level state — NOT shared with any other rate limiter
+# NOTE: This rate limiter uses an in-process dictionary. Under multi-worker
+# deployments (e.g., gunicorn with multiple workers), rate limits are enforced
+# per-worker, not globally. A user could make up to RATE_LIMIT_MAX attempts
+# against each worker before being blocked, making the effective limit
+# RATE_LIMIT_MAX × worker_count. For production multi-worker deployments,
+# replace with a Redis-backed rate limiter (e.g., redis-py with a sliding
+# window script) so that all workers share a single counter.
+# Module-level state — NOT shared with any other rate limiter.
 _login_attempts: dict[str, deque] = defaultdict(deque)
 
 

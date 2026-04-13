@@ -16,16 +16,24 @@ branch_labels = None
 depends_on = None
 
 # PHI tables that need RLS — these contain patient or org-sensitive data.
-# placement_outcomes is excluded here because it has no organization_id column;
-# it is handled separately below via a subquery join through patient_cases.
+# Only tables with a *direct* organization_id column are included here.
+# Tables that derive org membership via patient_case_id FK
+# (facility_matches, clinical_assessments, outreach_actions, placement_outcomes)
+# are handled separately below via a subquery join through patient_cases.
+# F32 fix: facility_matches has no organization_id column — only patient_case_id.
 _PHI_TABLES = [
     "patient_cases",
-    "clinical_assessments",
-    "facility_matches",
-    "outreach_actions",
     "import_jobs",
     "case_status_history",
     "audit_events",
+]
+
+# Tables whose org scope must be derived by joining through patient_cases
+# (no direct organization_id column — only patient_case_id FK).
+_PHI_TABLES_VIA_CASE = [
+    "clinical_assessments",   # has patient_case_id, no organization_id
+    "facility_matches",       # has patient_case_id, no organization_id — F32
+    "outreach_actions",       # has patient_case_id, no organization_id
 ]
 
 
@@ -48,7 +56,7 @@ def upgrade() -> None:
             FOR EACH ROW EXECUTE FUNCTION audit_events_immutable();
     """)
 
-    # ── Enable RLS on all PHI tables ─────────────────────────────────────────
+    # ── Enable RLS on tables with a direct organization_id column ────────────
     # @forgeplan-spec: AC5
     for table in _PHI_TABLES:
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
@@ -77,7 +85,7 @@ def upgrade() -> None:
         """)
 
         # UPDATE policy (except audit_events — the trigger prevents it anyway)
-        if table != "audit_events" and table != "placement_outcomes":
+        if table != "audit_events":
             op.execute(f"""
                 CREATE POLICY {table}_org_update ON {table}
                     FOR UPDATE
@@ -93,34 +101,58 @@ def upgrade() -> None:
                     );
             """)
 
-    # ── RLS for placement_outcomes (no organization_id column — join via patient_cases) ──
+    # ── RLS for tables without a direct organization_id column ───────────────
     # @forgeplan-spec: AC5
-    # placement_outcomes references patient_cases via patient_case_id; org scoping
-    # is derived through that FK rather than a direct organization_id column.
-    op.execute("ALTER TABLE placement_outcomes ENABLE ROW LEVEL SECURITY;")
-    op.execute("ALTER TABLE placement_outcomes FORCE ROW LEVEL SECURITY;")
+    # These tables reference patient_cases via patient_case_id FK.
+    # Org scoping is derived through that join rather than a direct column.
+    # Applies to: clinical_assessments, facility_matches, outreach_actions,
+    #             placement_outcomes  (F32 fix: facility_matches was incorrectly
+    #             included in the direct-column loop above).
+    _via_case_tables = list(_PHI_TABLES_VIA_CASE) + ["placement_outcomes"]
+    for table in _via_case_tables:
+        op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
+        op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
 
-    op.execute("""
-        CREATE POLICY placement_outcomes_org_select ON placement_outcomes
-            FOR SELECT
-            USING (
-                patient_case_id IN (
-                    SELECT id FROM patient_cases
-                    WHERE organization_id = (auth.jwt() -> 'app_metadata' ->> 'organization_id')::text
-                )
-            );
-    """)
+        op.execute(f"""
+            CREATE POLICY {table}_org_select ON {table}
+                FOR SELECT
+                USING (
+                    patient_case_id IN (
+                        SELECT id FROM patient_cases
+                        WHERE organization_id = (auth.jwt() -> 'app_metadata' ->> 'organization_id')::text
+                    )
+                );
+        """)
 
-    op.execute("""
-        CREATE POLICY placement_outcomes_org_insert ON placement_outcomes
-            FOR INSERT
-            WITH CHECK (
-                patient_case_id IN (
-                    SELECT id FROM patient_cases
-                    WHERE organization_id = (auth.jwt() -> 'app_metadata' ->> 'organization_id')::text
-                )
-            );
-    """)
+        op.execute(f"""
+            CREATE POLICY {table}_org_insert ON {table}
+                FOR INSERT
+                WITH CHECK (
+                    patient_case_id IN (
+                        SELECT id FROM patient_cases
+                        WHERE organization_id = (auth.jwt() -> 'app_metadata' ->> 'organization_id')::text
+                    )
+                );
+        """)
+
+        # placement_outcomes is intentionally insert-only (no UPDATE policy).
+        if table != "placement_outcomes":
+            op.execute(f"""
+                CREATE POLICY {table}_org_update ON {table}
+                    FOR UPDATE
+                    USING (
+                        patient_case_id IN (
+                            SELECT id FROM patient_cases
+                            WHERE organization_id = (auth.jwt() -> 'app_metadata' ->> 'organization_id')::text
+                        )
+                    )
+                    WITH CHECK (
+                        patient_case_id IN (
+                            SELECT id FROM patient_cases
+                            WHERE organization_id = (auth.jwt() -> 'app_metadata' ->> 'organization_id')::text
+                        )
+                    );
+            """)
 
     # ── Bypass RLS for service role ───────────────────────────────────────────
     # Supabase service role bypasses RLS by default; no additional config needed.
@@ -128,11 +160,16 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Drop join-based placement_outcomes policies first (not in _PHI_TABLES loop)
-    op.execute("DROP POLICY IF EXISTS placement_outcomes_org_insert ON placement_outcomes;")
-    op.execute("DROP POLICY IF EXISTS placement_outcomes_org_select ON placement_outcomes;")
-    op.execute("ALTER TABLE placement_outcomes DISABLE ROW LEVEL SECURITY;")
+    # Drop join-based policies (via patient_case_id) — placement_outcomes + _PHI_TABLES_VIA_CASE
+    _via_case_tables = list(_PHI_TABLES_VIA_CASE) + ["placement_outcomes"]
+    for table in _via_case_tables:
+        if table != "placement_outcomes":
+            op.execute(f"DROP POLICY IF EXISTS {table}_org_update ON {table};")
+        op.execute(f"DROP POLICY IF EXISTS {table}_org_insert ON {table};")
+        op.execute(f"DROP POLICY IF EXISTS {table}_org_select ON {table};")
+        op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY;")
 
+    # Drop direct organization_id column policies
     for table in _PHI_TABLES:
         if table != "audit_events":
             op.execute(f"DROP POLICY IF EXISTS {table}_org_update ON {table};")

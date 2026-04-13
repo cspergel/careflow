@@ -2,7 +2,7 @@
   "node_id": "auth-module",
   "status": "reviewed",
   "node_type": "service",
-  "file_count": 14,
+  "file_count": 15,
   "test_file_count": 0,
   "dependency_count": 1,
   "connection_count": 9,

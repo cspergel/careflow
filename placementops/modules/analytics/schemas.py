@@ -18,7 +18,7 @@ PaginatedOperationsQueue.
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Literal
+from typing import Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -107,6 +107,7 @@ class DashboardReport(BaseModel):
     total_cases: int
     cases_by_status: dict[str, int]
     placement_rate_pct: float
+    avg_placement_days: Optional[float] = None
     stage_metrics: list[StageMetric]
     generated_at: datetime
 

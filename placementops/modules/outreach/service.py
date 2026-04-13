@@ -83,6 +83,38 @@ _PRE_OUTREACH_STATUSES: frozenset[str] = frozenset(
     {"facility_options_generated", "declined_retry_needed"}
 )
 
+# F2: Allowlist of valid role keys recognised by the state machine.
+# Validates JWT role_key before passing to transition_case_status to prevent
+# role escalation via crafted JWT claims.
+_VALID_ACTOR_ROLES: frozenset[str] = frozenset(
+    {
+        "system",
+        "admin",
+        "intake_staff",
+        "clinical_reviewer",
+        "placement_coordinator",
+        "manager",
+        "read_only",
+    }
+)
+
+
+def _validated_role(role_key: str) -> str:
+    """Return role_key if it is in the known-valid allowlist, else raise 403.
+
+    Prevents crafted JWT claims from injecting an unexpected actor_role string
+    into the state machine's permission check.
+    """
+    if role_key not in _VALID_ACTOR_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "invalid_role",
+                "message": f"Role '{role_key}' is not a recognised platform role",
+            },
+        )
+    return role_key
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -335,7 +367,7 @@ async def create_outreach_action(
         # The first transition_case_status call will commit the OutreachAction + its audit
         # event + the case history row in a single transaction.
         await _advance_case_through_outreach_to_pending(
-            session, case, auth_ctx.user_id, auth_ctx.role_key, organization_id
+            session, case, auth_ctx.user_id, _validated_role(auth_ctx.role_key), organization_id
         )
         await session.refresh(action)
     else:
@@ -536,7 +568,7 @@ async def submit_for_approval(
         await transition_case_status(
             case_id=case_id,
             to_status="outreach_pending_approval",
-            actor_role=auth_ctx.role_key,
+            actor_role=_validated_role(auth_ctx.role_key),
             actor_user_id=auth_ctx.user_id,
             session=session,
             transition_reason="Outreach action submitted for approval",
@@ -623,7 +655,7 @@ async def approve_action(
             )
         )
     )
-    is_first_approved = existing_approved.scalar_one_or_none() is None
+    is_first_approved = len(existing_approved.scalars().all()) == 0
 
     if is_first_approved:
         # Advance case to outreach_in_progress if at outreach_pending_approval
@@ -648,7 +680,7 @@ async def approve_action(
                 # is already in the correct state and the action was validly
                 # approved.
                 if exc.status_code == 400 and (
-                    exc.detail if isinstance(exc.detail, str) else (exc.detail or {}).get("error_code")
+                    exc.detail if isinstance(exc.detail, str) else (exc.detail or {}).get("error")
                 ) == "invalid_transition":
                     logger.warning(
                         "approve_action: concurrent approval detected for case %s — "
@@ -743,7 +775,7 @@ async def mark_sent(
             )
         )
     )
-    is_first_sent = existing_sent.scalar_one_or_none() is None
+    is_first_sent = len(existing_sent.scalars().all()) == 0
 
     if is_first_sent:
         case = await _get_case_scoped(session, case_id, organization_id)
@@ -891,6 +923,43 @@ async def get_outreach_queue(
     items = list(result.scalars().all())
 
     return items, total
+
+
+# ---------------------------------------------------------------------------
+# F10: get_case_outreach_actions — per-case outreach action history
+# ---------------------------------------------------------------------------
+
+
+async def get_case_outreach_actions(
+    session: AsyncSession,
+    case_id: UUID,
+    auth_ctx: AuthContext,
+) -> tuple[list[OutreachAction], int]:
+    """
+    Return all OutreachAction records for a specific case (F10).
+
+    Tenant isolation: case must belong to auth_ctx.organization_id.
+    Returns (items, total) ordered by created_at descending.
+    Raises 404 if the case is not found or does not belong to this org.
+    """
+    organization_id = auth_ctx.organization_id
+
+    # Verify case exists and belongs to this org (also 404s if not found)
+    await _get_case_scoped(session, case_id, organization_id)
+
+    result = await session.execute(
+        select(OutreachAction)
+        .join(PatientCase, PatientCase.id == OutreachAction.patient_case_id)
+        .where(
+            and_(
+                OutreachAction.patient_case_id == str(case_id),
+                PatientCase.organization_id == str(organization_id),
+            )
+        )
+        .order_by(OutreachAction.created_at.desc())
+    )
+    items = list(result.scalars().all())
+    return items, len(items)
 
 
 # ---------------------------------------------------------------------------

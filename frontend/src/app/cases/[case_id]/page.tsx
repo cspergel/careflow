@@ -63,7 +63,6 @@ export default function CaseDetailPage() {
   const [outreachActions, setOutreachActions] = React.useState<ExistingDraft[]>([])
   const [templates, setTemplates] = React.useState<DraftTemplateOption[]>([])
   const [timeline, setTimeline] = React.useState<TimelineEvent[]>([])
-  const [auditEvents, setAuditEvents] = React.useState<TimelineEvent[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [pageError, setPageError] = React.useState<string | null>(null)
 
@@ -81,18 +80,7 @@ export default function CaseDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId])
 
-  // F10: Re-load audit events when userRole resolves (it starts null and updates async)
-  React.useEffect(() => {
-    if (userRole === "admin" && !isLoading) {
-      apiClient
-        .fetch<{ events: TimelineEvent[] }>(`/api/v1/cases/${caseId}/audit`)
-        .then((auditData) => setAuditEvents(auditData.events))
-        .catch(() => {
-          // Audit load failure is non-critical
-        })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userRole, caseId])
+  // F22: Audit endpoint does not exist — audit log is coming soon, no fetch needed
 
   const loadCaseData = async () => {
     setIsLoading(true)
@@ -110,7 +98,7 @@ export default function CaseDetailPage() {
             `/api/v1/cases/${caseId}/outreach-actions`
           ),
           // F5: correct route is /api/v1/templates/outreach
-          apiClient.fetch<{ items: OutreachTemplate[] }>(
+          apiClient.fetch<{ templates: OutreachTemplate[] }>(
             `/api/v1/templates/outreach`
           ),
           apiClient.fetch<{ events: TimelineEvent[] }>(
@@ -127,7 +115,7 @@ export default function CaseDetailPage() {
         setOutreachActions(outreachData.value.items)
       if (templateData.status === "fulfilled") {
         setTemplates(
-          (templateData.value.items as OutreachTemplate[]).map((t) => ({
+          (templateData.value.templates as OutreachTemplate[]).map((t) => ({
             id: t.id,
             template_name: t.template_name,
             template_type: t.template_type,
@@ -152,17 +140,7 @@ export default function CaseDetailPage() {
         // No assessment yet — that's OK
       }
 
-      // Load audit events for admin
-      if (userRole === "admin") {
-        try {
-          const auditData = await apiClient.fetch<{ events: TimelineEvent[] }>(
-            `/api/v1/cases/${caseId}/audit`
-          )
-          setAuditEvents(auditData.events)
-        } catch {
-          // Audit load failure is non-critical
-        }
-      }
+      // F22: Audit endpoint does not exist yet — skip fetch
     } catch (err) {
       setPageError(
         err instanceof ApiError ? err.message : "Failed to load case"
@@ -200,13 +178,13 @@ export default function CaseDetailPage() {
   }
 
   // AC10: Select/deselect facility for outreach
-  // F16: backend endpoint takes no body for the select toggle
+  // F21: backend route for match selection is PATCH not POST
   const handleSelectFacility = async (facilityMatchId: string, selected: boolean) => {
     try {
       await apiClient.fetch(
         `/api/v1/cases/${caseId}/matches/${facilityMatchId}/select`,
         {
-          method: "POST",
+          method: "PATCH",
         }
       )
       setMatches((prev) =>
@@ -578,10 +556,11 @@ export default function CaseDetailPage() {
           </TabsContent>
 
           {/* Audit tab — AC9: only visible/rendered for admin role */}
+          {/* F22: Audit log endpoint not yet available */}
           {userRole === "admin" && (
             <TabsContent value="audit" className="p-6 mt-0">
               <h2 className="text-base font-semibold mb-4">Audit Log</h2>
-              <ActivityTimeline events={auditEvents} />
+              <p className="text-sm text-muted-foreground">Audit log coming soon.</p>
             </TabsContent>
           )}
         </div>

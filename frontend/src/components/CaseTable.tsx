@@ -58,6 +58,41 @@ export function useCaseTableFilters() {
   return useQueryStates(defaultParsers, { shallow: false })
 }
 
+/**
+ * F29: Returns a [filters, setFilters] pair that uses pageKey-prefixed URL params
+ * when a pageKey is provided, matching CaseTable's own prefixed nuqs state.
+ * Use this in FilterBar (or any companion component) to keep params in sync with CaseTable.
+ */
+export function useCaseTableFiltersForKey(pageKey?: string) {
+  const prefixedParsers = pageKey ? makeCaseTableParsers(pageKey) : defaultParsers
+  const [rawFilters, setRawFilters] = useQueryStates(prefixedParsers as typeof defaultParsers, { shallow: false })
+
+  const filters: CaseTableFilters = pageKey
+    ? {
+        page: (rawFilters as Record<string, unknown>)[`${pageKey}_page`] as number ?? 1,
+        per_page: (rawFilters as Record<string, unknown>)[`${pageKey}_per_page`] as number ?? 50,
+        sort: (rawFilters as Record<string, unknown>)[`${pageKey}_sort`] as string ?? "created_at",
+        sort_dir: (rawFilters as Record<string, unknown>)[`${pageKey}_sort_dir`] as string ?? "desc",
+        search: (rawFilters as Record<string, unknown>)[`${pageKey}_search`] as string ?? "",
+        status: (rawFilters as Record<string, unknown>)[`${pageKey}_status`] as string[] ?? [],
+      }
+    : rawFilters as unknown as CaseTableFilters
+
+  const setFilters = (updates: Partial<CaseTableFilters>) => {
+    if (pageKey) {
+      const prefixed: Record<string, unknown> = {}
+      for (const [k, v] of Object.entries(updates)) {
+        prefixed[`${pageKey}_${k}`] = v
+      }
+      setRawFilters(prefixed as Parameters<typeof setRawFilters>[0])
+    } else {
+      setRawFilters(updates as Parameters<typeof setRawFilters>[0])
+    }
+  }
+
+  return [filters, setFilters] as const
+}
+
 interface CaseTableProps<TData> {
   data: TData[]
   columns: ColumnDef<TData>[]

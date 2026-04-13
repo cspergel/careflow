@@ -108,6 +108,24 @@ async def test_ac1_read_only_returns_403(
 
 
 @pytest.mark.asyncio
+async def test_ac1_manager_returns_403(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    seed_org_fixture,
+    manager_user,
+) -> None:
+    """manager role → 403 on POST outcomes (AC1: coordinator-only endpoint)."""
+    case = await seed_case(db_session, current_status="pending_facility_response")
+
+    resp = await client.post(
+        f"/api/v1/cases/{case.id}/outcomes",
+        json={"outcome_type": "family_declined"},
+        headers=auth_headers(manager_user.id, str(TEST_ORG_ID), "manager"),
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_ac1_coordinator_family_declined_returns_201(
     client: AsyncClient,
     db_session: AsyncSession,

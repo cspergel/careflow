@@ -89,10 +89,10 @@ export default function FacilitiesPage() {
     setIsLoading(true)
     setPageError(null)
     try {
-      const data = await apiClient.fetch<{ items: Facility[]; total: number }>(
-        "/api/v1/facilities?limit=50&active_only=true"
+      const data = await apiClient.fetch<{ facilities: Facility[]; total: number }>(
+        "/api/v1/facilities?page_size=50&active_only=true"
       )
-      setFacilities(data.items)
+      setFacilities(data.facilities)
       setTotalCount(data.total)
     } catch (err) {
       setPageError(

@@ -37,7 +37,7 @@ interface FacilityCardProps {
   isUpdating?: boolean
 }
 
-const FACILITY_TYPE_LABELS: Record<FacilityCardData["facility_type"], string> =
+const FACILITY_TYPE_LABELS: Record<Exclude<FacilityCardData["facility_type"], null | undefined>, string> =
   {
     snf: "Skilled Nursing Facility",
     irf: "Inpatient Rehab Facility",

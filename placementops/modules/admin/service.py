@@ -615,8 +615,8 @@ async def update_org_settings(
         org.name = payload.org_name
         new_values["org_name"] = org.name
 
-    if payload.settings_json is not None:
-        new_values["settings_json"] = payload.settings_json
+    # settings_json is NOT persisted in Phase 1 (no DB column) — excluded from
+    # audit trail so the event only reflects fields that are actually stored.
 
     await emit_audit_event(
         session=session,

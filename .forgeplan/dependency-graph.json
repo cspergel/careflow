@@ -79,7 +79,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/app/admin/page.tsx": {
-      "hash": "ae59470b",
+      "hash": "87c18dd4",
       "imports": [
         {
           "source": "next/navigation",
@@ -175,7 +175,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/app/analytics/AnalyticsDashboard.tsx": {
-      "hash": "10d5a3dd",
+      "hash": "5d0ad0aa",
       "imports": [
         {
           "source": "@/components/ui/card",
@@ -239,7 +239,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/app/cases/[case_id]/page.tsx": {
-      "hash": "4f33a4e5",
+      "hash": "5a70ea04",
       "imports": [
         {
           "source": "next/navigation",
@@ -384,7 +384,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/app/dashboard/DashboardKPIs.tsx": {
-      "hash": "5eb19270",
+      "hash": "6bc063f5",
       "imports": [
         {
           "source": "@/components/ui/card",
@@ -616,7 +616,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/app/intake/import/page.tsx": {
-      "hash": "d3721dc6",
+      "hash": "8592a3a8",
       "imports": [
         {
           "source": "lucide-react",
@@ -696,7 +696,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/app/intake/page.tsx": {
-      "hash": "e8051c71",
+      "hash": "f0c3c48b",
       "imports": [
         {
           "source": "react-hook-form",
@@ -835,15 +835,8 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/app/layout.tsx": {
-      "hash": "996ae92f",
+      "hash": "f977532a",
       "imports": [
-        {
-          "source": "next/navigation",
-          "names": [
-            "redirect"
-          ],
-          "type": "named"
-        },
         {
           "source": "@/lib/supabase/server",
           "names": [
@@ -866,7 +859,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/app/login/page.tsx": {
-      "hash": "6565496c",
+      "hash": "fc2167f4",
       "imports": [
         {
           "source": "next/navigation",
@@ -928,7 +921,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/app/outreach/page.tsx": {
-      "hash": "491a1f8b",
+      "hash": "28ec0738",
       "imports": [
         {
           "source": "@tanstack/react-table",
@@ -994,7 +987,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/app/page.tsx": {
-      "hash": "92ef4a26",
+      "hash": "873fc743",
       "imports": [
         {
           "source": "next/navigation",
@@ -1009,6 +1002,13 @@
             "createClient"
           ],
           "type": "named"
+        },
+        {
+          "source": "@/lib/utils",
+          "names": [
+            "getRoleLanding"
+          ],
+          "type": "named"
         }
       ],
       "exports": [
@@ -1017,7 +1017,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/app/queue/page.tsx": {
-      "hash": "d3468105",
+      "hash": "26d4f55a",
       "imports": [
         {
           "source": "@tanstack/react-table",
@@ -1121,7 +1121,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/client/index.ts": {
-      "hash": "0f5b478d",
+      "hash": "f3779257",
       "imports": [
         {
           "source": "@/lib/supabase/client",
@@ -1187,7 +1187,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/components/CaseTable.tsx": {
-      "hash": "9eb29876",
+      "hash": "4e014a35",
       "imports": [
         {
           "source": "@tanstack/react-table",
@@ -1254,7 +1254,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/components/ClinicalAssessmentForm.tsx": {
-      "hash": "6a5d2535",
+      "hash": "5d279164",
       "imports": [
         {
           "source": "react-hook-form",
@@ -1366,7 +1366,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/components/DraftEditor.tsx": {
-      "hash": "3373a034",
+      "hash": "b90e1f14",
       "imports": [
         {
           "source": "react-hook-form",
@@ -1471,7 +1471,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/components/FacilityCard.tsx": {
-      "hash": "7b907de8",
+      "hash": "22c744ed",
       "imports": [
         {
           "source": "lucide-react",
@@ -2183,14 +2183,15 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/components/__tests__/CaseTable.test.tsx": {
-      "hash": "adf1165b",
+      "hash": "167e14cd",
       "imports": [
         {
           "source": "@testing-library/react",
           "names": [
             "render",
             "screen",
-            "renderHook"
+            "renderHook",
+            "fireEvent"
           ],
           "type": "named"
         },
@@ -2198,7 +2199,8 @@
           "source": "@tanstack/react-table",
           "names": [
             "useReactTable",
-            "getCoreRowModel"
+            "getCoreRowModel",
+            "type ColumnDef"
           ],
           "type": "named"
         },
@@ -2208,6 +2210,41 @@
             "React"
           ],
           "type": "default"
+        },
+        {
+          "source": "../CaseTable",
+          "names": [
+            "CaseTable"
+          ],
+          "type": "require"
+        },
+        {
+          "source": "../CaseTable",
+          "names": [
+            "CaseTable"
+          ],
+          "type": "require"
+        },
+        {
+          "source": "../CaseTable",
+          "names": [
+            "CaseTable"
+          ],
+          "type": "require"
+        },
+        {
+          "source": "../CaseTable",
+          "names": [
+            "CaseTable"
+          ],
+          "type": "require"
+        },
+        {
+          "source": "../CaseTable",
+          "names": [
+            "CaseTable"
+          ],
+          "type": "require"
         }
       ],
       "exports": [],
@@ -2323,7 +2360,7 @@
       "node": "frontend-app-shell"
     },
     "frontend/src/lib/utils.ts": {
-      "hash": "35af1f1a",
+      "hash": "8cf6770d",
       "imports": [
         {
           "source": "clsx",
@@ -2346,7 +2383,8 @@
         "formatDate",
         "formatDateTime",
         "daysElapsed",
-        "toTitleCase"
+        "toTitleCase",
+        "getRoleLanding"
       ],
       "node": "frontend-app-shell"
     },
@@ -3097,6 +3135,12 @@
         "type": "export"
       }
     ],
+    "getRoleLanding": [
+      {
+        "file": "frontend/src/lib/utils.ts",
+        "type": "export"
+      }
+    ],
     "PriorityLevel": [
       {
         "file": "src/shared/types/index.ts",
@@ -3262,6 +3306,46 @@
   },
   "edges": [
     {
+      "from": "frontend/src/components/__tests__/CaseTable.test.tsx",
+      "to": "frontend/src/components/CaseTable.tsx",
+      "symbols": [
+        "CaseTable"
+      ],
+      "type": "require"
+    },
+    {
+      "from": "frontend/src/components/__tests__/CaseTable.test.tsx",
+      "to": "frontend/src/components/CaseTable.tsx",
+      "symbols": [
+        "CaseTable"
+      ],
+      "type": "require"
+    },
+    {
+      "from": "frontend/src/components/__tests__/CaseTable.test.tsx",
+      "to": "frontend/src/components/CaseTable.tsx",
+      "symbols": [
+        "CaseTable"
+      ],
+      "type": "require"
+    },
+    {
+      "from": "frontend/src/components/__tests__/CaseTable.test.tsx",
+      "to": "frontend/src/components/CaseTable.tsx",
+      "symbols": [
+        "CaseTable"
+      ],
+      "type": "require"
+    },
+    {
+      "from": "frontend/src/components/__tests__/CaseTable.test.tsx",
+      "to": "frontend/src/components/CaseTable.tsx",
+      "symbols": [
+        "CaseTable"
+      ],
+      "type": "require"
+    },
+    {
       "from": "frontend/src/components/__tests__/ClinicalAssessmentForm.test.tsx",
       "to": "frontend/src/components/ClinicalAssessmentForm.tsx",
       "symbols": [
@@ -3280,10 +3364,10 @@
       "type": "named"
     }
   ],
-  "builtAt": "2026-04-12T19:15:09.732Z",
+  "builtAt": "2026-04-12T23:15:55.610Z",
   "_stats": {
     "filesIndexed": 50,
-    "symbolsTracked": 126,
-    "edgesFound": 2
+    "symbolsTracked": 127,
+    "edgesFound": 7
   }
 }

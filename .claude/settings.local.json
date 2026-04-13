@@ -76,7 +76,16 @@
       "Bash(python3 -c \"import sys; data=sys.stdin.read\\(\\); import json; obj=json.loads\\(data\\); [print\\(s[''''name'''']+'''':\\\\n''''+s.get\\(''''output'''',''''''''\\)[-5000:]\\) for s in obj.get\\(''''steps'''',[]\\) if s.get\\(''''status''''\\)==''''fail'''']\")",
       "Bash(python3 -c \"import json,sys; s=json.load\\(sys.stdin\\); nodes=s.get\\(''''nodes'''',{}\\); [print\\(f''''{k}: {v.get\\(\"\"status\"\"\\)} \\(prev: {v.get\\(\"\"previous_status\"\"\\)}\\)''''\\) for k,v in nodes.items\\(\\)]\")",
       "Bash(python3 -c \"import sys,json; s=json.load\\(sys.stdin\\); print\\(s[''''sweep_state''''][''''current_phase'''']\\)\")",
-      "Bash(python3 -c \"import sys, yaml; data=yaml.safe_load\\(sys.stdin\\); agents=[''''sweep-adversary'''',''''sweep-contractualist'''',''''sweep-pathfinder'''',''''sweep-structuralist'''',''''sweep-skeptic'''']; [print\\(f''''{a}: {[s[name] for s in data[assignments].get\\(a,[]\\)]}''''\\) for a in agents]\")"
+      "Bash(python3 -c \"import sys, yaml; data=yaml.safe_load\\(sys.stdin\\); agents=[''''sweep-adversary'''',''''sweep-contractualist'''',''''sweep-pathfinder'''',''''sweep-structuralist'''',''''sweep-skeptic'''']; [print\\(f''''{a}: {[s[name] for s in data[assignments].get\\(a,[]\\)]}''''\\) for a in agents]\")",
+      "Bash(grep -A3 '\"\"test\"\"' package.json)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(''''sweep_state.current_phase:'''', d.get\\(''''sweep_state'''',{}\\).get\\(''''current_phase''''\\)\\); print\\(''''sweep_state.operation:'''', d.get\\(''''sweep_state'''',{}\\).get\\(''''operation''''\\)\\); print\\(''''active_node:'''', d.get\\(''''active_node''''\\)\\); print\\(''''findings_pending:'''', len\\(d.get\\(''''sweep_state'''',{}\\).get\\(''''findings'''',{}\\).get\\(''''pending'''',[]\\)\\)\\);  print\\(''''pass_number:'''', d.get\\(''''sweep_state'''',{}\\).get\\(''''pass_number''''\\)\\)\")",
+      "Read(//c/Users/drcra/Documents/Coding Projects/Placement-ops-careflow/$APPDATA/**)",
+      "Read(//c/Users/drcra/Documents/Coding Projects/Placement-ops-careflow/$HOME/.config/**)",
+      "Read(//c/Users/drcra/Documents/Coding Projects/Placement-ops-careflow/$HOME/**)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(''''verdict:'''', d[''''verdict'''']\\); print\\(''''total:'''', d[''''total'''']\\); print\\(''''warned:'''', d[''''warned'''']\\); print\\(''''failed:'''', d[''''failed'''']\\)\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); ss=d.get\\(''''sweep_state'''',{}\\); print\\(''''current_phase:'''', ss.get\\(''''current_phase''''\\)\\); print\\(''''fixing_node:'''', ss.get\\(''''fixing_node''''\\)\\); print\\(''''active_node:'''', d.get\\(''''active_node''''\\)\\)\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); ss=d.get\\(''''sweep_state'''',{}\\); print\\(''''fixing_node:'''', ss.get\\(''''fixing_node''''\\)\\)\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); ss=d.get\\(''''sweep_state'''',{}\\); print\\(''''phase:'''', ss.get\\(''''current_phase''''\\)\\); print\\(''''operation:'''', ss.get\\(''''operation''''\\)\\); print\\(''''fixing_node:'''', ss.get\\(''''fixing_node''''\\)\\)\")"
     ]
   }
 }

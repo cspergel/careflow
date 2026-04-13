@@ -88,3 +88,4 @@ app.include_router(matching_router, prefix="/api/v1")
 - [2026-04-12T14:38:18.384Z] Created: `placementops/modules/matching/tests/test_scoring.py`
 - [2026-04-12T20:44:41.047Z] Edited: `placementops/modules/matching/tests/test_generate.py`
 - [2026-04-12T20:44:45.906Z] Created: `placementops/modules/matching/tests/test_generate.py`
+- [2026-04-12T22:16:59.608Z] Created: `placementops/modules/matching/engine.py`

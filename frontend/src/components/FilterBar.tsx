@@ -7,7 +7,7 @@ import { Search, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { useCaseTableFilters } from "@/components/CaseTable"
+import { useCaseTableFiltersForKey } from "@/components/CaseTable"
 import type { CaseStatus } from "@/components/StatusBadge"
 import { STATUS_CONFIG } from "@/components/StatusBadge"
 import { cn } from "@/lib/utils"
@@ -17,6 +17,8 @@ interface FilterBarProps {
   statusOptions?: CaseStatus[]
   showSearch?: boolean
   showStatusFilter?: boolean
+  /** F29: Must match the pageKey passed to the companion CaseTable to keep URL params in sync */
+  pageKey?: string
 }
 
 /**
@@ -28,8 +30,9 @@ export function FilterBar({
   statusOptions,
   showSearch = true,
   showStatusFilter = true,
+  pageKey,
 }: FilterBarProps) {
-  const [filters, setFilters] = useCaseTableFilters()
+  const [filters, setFilters] = useCaseTableFiltersForKey(pageKey)
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFilters({ search: e.target.value, page: 1 })

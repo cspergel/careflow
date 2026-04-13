@@ -4,12 +4,27 @@
 import React from "react"
 import { render, screen, renderHook, fireEvent } from "@testing-library/react"
 import { useReactTable, getCoreRowModel, type ColumnDef } from "@tanstack/react-table"
-import { NuqsTestingAdapter } from "nuqs/adapters/testing"
 
-// Helper to wrap components that depend on nuqs URL state
-function withNuqs(ui: React.ReactElement) {
-  return render(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>)
-}
+// Mock nuqs to avoid App Router dependency in tests (nuqs v1 has no testing adapter)
+jest.mock("nuqs", () => {
+  const makeParser = (defaultValue: unknown) => ({
+    _default: defaultValue,
+    withDefault: (def: unknown) => ({ _default: def }),
+  })
+  return {
+    parseAsInteger: makeParser(0),
+    parseAsString: makeParser(""),
+    parseAsArrayOf: () => makeParser([]),
+    useQueryStates: (parsers: Record<string, { _default: unknown }>) => {
+      const defaults = Object.fromEntries(
+        Object.entries(parsers).map(([k, v]) => [k, v._default ?? null])
+      )
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const [state, setState] = React.useState(defaults)
+      return [state, setState]
+    },
+  }
+})
 
 describe("CaseTable — manual server-side flags", () => {
   test("useReactTable accepts all manual flags without error", () => {
@@ -42,7 +57,7 @@ describe("CaseTable component", () => {
 
   test("renders column headers", () => {
     const { CaseTable } = require("../CaseTable")
-    withNuqs(
+    render(
       <CaseTable
         data={[]}
         columns={columns}
@@ -54,7 +69,7 @@ describe("CaseTable component", () => {
 
   test("renders empty state when data is empty", () => {
     const { CaseTable } = require("../CaseTable")
-    withNuqs(
+    render(
       <CaseTable
         data={[]}
         columns={columns}
@@ -67,7 +82,7 @@ describe("CaseTable component", () => {
   test("renders row data", () => {
     const { CaseTable } = require("../CaseTable")
     const data: Row[] = [{ id: "1", name: "Alice Smith" }]
-    withNuqs(
+    render(
       <CaseTable
         data={data}
         columns={columns}
@@ -81,7 +96,7 @@ describe("CaseTable component", () => {
     const { CaseTable } = require("../CaseTable")
     const onRowClick = jest.fn()
     const data: Row[] = [{ id: "1", name: "Bob Jones" }]
-    withNuqs(
+    render(
       <CaseTable
         data={data}
         columns={columns}
@@ -104,7 +119,7 @@ describe("CaseTable — pageKey URL namespacing (F11)", () => {
   test("accepts pageKey prop without error", () => {
     const { CaseTable } = require("../CaseTable")
     expect(() => {
-      withNuqs(
+      render(
         <CaseTable
           data={[]}
           columns={[]}

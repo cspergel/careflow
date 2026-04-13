@@ -127,7 +127,7 @@ function RouteRetrySheet({ case_, open, onClose, onRoute }: RouteRetrySheetProps
       await onRoute(case_.id, destination)
       onClose()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Routing failed")
+      setError(err instanceof ApiError ? err.message : "Routing failed. Please try again or contact your administrator if the issue persists.")
     } finally {
       setIsLoading(false)
     }
@@ -194,16 +194,19 @@ export default function QueuePage() {
     setIsLoading(true)
     setPageError(null)
     const tabConfig = TAB_CONFIGS.find((t) => t.key === tab)
-    const statusParam =
-      tabConfig && tabConfig.statuses.length > 0
-        ? `&status=${tabConfig.statuses.join(",")}`
-        : ""
+
+    // F23: backend PaginationParams uses "page_size" not "limit"
+    // F26: repeated status= params instead of comma-separated string
+    const params = new URLSearchParams({ page_size: "50", active_only: "true" })
+    if (tabConfig && tabConfig.statuses.length > 0) {
+      tabConfig.statuses.forEach((s) => params.append("status", s))
+    }
 
     try {
-      const data = await apiClient.fetch<{ items: PatientCase[]; total: number }>(
-        `/api/v1/cases?limit=50&active_only=true${statusParam}`
+      const data = await apiClient.fetch<{ cases: PatientCase[]; total: number }>(
+        `/api/v1/cases?${params.toString()}`
       )
-      setCases(data.items)
+      setCases(data.cases)
       setTotalCount(data.total)
     } catch (err) {
       setPageError(

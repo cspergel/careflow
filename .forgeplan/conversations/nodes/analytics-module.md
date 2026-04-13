@@ -124,3 +124,11 @@ to run stage_metrics assertions, either mock the DB or use a PostgreSQL test con
 - [2026-04-11T20:19:47.704Z] Created: `placementops/modules/analytics/service.py`
 - [2026-04-11T20:20:07.702Z] Created: `placementops/modules/analytics/service.py`
 - [2026-04-12T20:45:53.696Z] Created: `placementops/modules/analytics/tests/test_analytics.py`
+- [2026-04-13T00:41:22.291Z] Created: `placementops/modules/analytics/router.py`
+- [2026-04-13T00:41:27.496Z] Created: `placementops/modules/analytics/router.py`
+- [2026-04-13T00:41:32.816Z] Created: `placementops/modules/analytics/router.py`
+- [2026-04-13T00:41:38.026Z] Created: `placementops/modules/analytics/router.py`
+- [2026-04-13T00:41:45.210Z] Created: `placementops/modules/analytics/schemas.py`
+- [2026-04-13T00:41:49.534Z] Created: `placementops/modules/analytics/schemas.py`
+- [2026-04-13T00:42:02.263Z] Created: `placementops/modules/analytics/service.py`
+- [2026-04-13T00:42:06.607Z] Created: `placementops/modules/analytics/service.py`

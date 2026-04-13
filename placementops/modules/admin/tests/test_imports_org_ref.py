@@ -260,8 +260,8 @@ async def test_patch_org_settings_with_settings_json(
     )
     assert resp.status_code == 200
     body = resp.json()
-    # Phase 1: settings_json is echoed back (not stored in DB)
-    assert body["settings_json"] == {"sla_hours": 24, "timezone": "America/Chicago"}
+    # Phase 1: settings_json is NOT stored or echoed (no DB column); always returns None
+    assert body["settings_json"] is None
 
 
 async def test_get_org_settings_non_admin_returns_403(

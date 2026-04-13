@@ -13,6 +13,7 @@ Exports for all other modules:
   - RolePermissions -> dict[str, set[str]]
 """
 
+from placementops.modules.auth.middleware import validate_jwt_secret
 from placementops.modules.auth.dependencies import require_role, require_write_permission, RolePermissions
 from placementops.modules.auth.router import router
 
@@ -21,4 +22,5 @@ __all__ = [
     "require_role",
     "require_write_permission",
     "RolePermissions",
+    "validate_jwt_secret",
 ]

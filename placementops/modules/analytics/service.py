@@ -440,6 +440,44 @@ async def get_dashboard_report(
     else:
         placement_rate_pct = 0.0
 
+    # avg_placement_days: average days from PatientCase.created_at to when the case
+    # first reached 'placed' or 'closed' status in case_status_history.
+    # Fetched as (case created_at, history entered_at) pairs and averaged in Python
+    # for DB-agnostic datetime arithmetic (avoids PG-only extract("epoch") syntax).
+    placement_timing_stmt = (
+        select(
+            PatientCase.created_at.label("case_created_at"),
+            func.min(CaseStatusHistory.entered_at).label("terminal_entered_at"),
+        )
+        .join(CaseStatusHistory, CaseStatusHistory.patient_case_id == PatientCase.id)
+        .where(
+            PatientCase.organization_id == str(organization_id),
+            PatientCase.created_at >= from_dt,
+            PatientCase.created_at <= to_dt,
+            CaseStatusHistory.to_status.in_(["placed", "closed"]),
+        )
+        .group_by(PatientCase.id, PatientCase.created_at)
+    )
+    placement_timing_result = await session.execute(placement_timing_stmt)
+    placement_timing_rows = placement_timing_result.mappings().all()
+
+    avg_placement_days: float | None = None
+    if placement_timing_rows:
+        day_deltas: list[float] = []
+        for row in placement_timing_rows:
+            t_created = row["case_created_at"]
+            t_terminal = row["terminal_entered_at"]
+            if t_created is not None and t_terminal is not None:
+                if t_created.tzinfo is None:
+                    t_created = t_created.replace(tzinfo=timezone.utc)
+                if t_terminal.tzinfo is None:
+                    t_terminal = t_terminal.replace(tzinfo=timezone.utc)
+                delta_days = (t_terminal - t_created).total_seconds() / 86400.0
+                if delta_days >= 0:
+                    day_deltas.append(delta_days)
+        if day_deltas:
+            avg_placement_days = round(sum(day_deltas) / len(day_deltas), 2)
+
     # Stage metrics: avg cycle time per status stage using case_status_history
     # Self-join: h1 = entering a stage, h2 = leaving that stage (h2.from_status = h1.to_status)
     # Raw timestamps fetched in Python for DB-agnostic arithmetic (avoids extract("epoch") PG-only syntax)
@@ -504,6 +542,7 @@ async def get_dashboard_report(
         total_cases=total_cases,
         cases_by_status=cases_by_status,
         placement_rate_pct=placement_rate_pct,
+        avg_placement_days=avg_placement_days,
         stage_metrics=stage_metrics,
         generated_at=now_utc,
     )

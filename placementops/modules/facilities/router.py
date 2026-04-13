@@ -164,8 +164,6 @@ async def create_facility(
     """
     # @forgeplan-spec: AC2
     facility = await service.create_facility(db=db, auth_ctx=auth_ctx, payload=payload)
-    await db.commit()
-    await db.refresh(facility)
     return FacilityResponse.model_validate(facility)
 
 
@@ -252,8 +250,6 @@ async def patch_facility(
     facility = await service.patch_facility(
         db=db, auth_ctx=auth_ctx, facility_id=facility_id, payload=payload
     )
-    await db.commit()
-    await db.refresh(facility)
     return FacilityResponse.model_validate(facility)
 
 
@@ -287,8 +283,6 @@ async def upsert_capabilities(
     capabilities = await service.upsert_capabilities(
         db=db, auth_ctx=auth_ctx, facility_id=facility_id, payload=payload
     )
-    await db.commit()
-    await db.refresh(capabilities)
     return FacilityCapabilitiesResponse.model_validate(capabilities)
 
 
@@ -349,8 +343,6 @@ async def create_insurance_rule(
     rule = await service.create_insurance_rule(
         db=db, auth_ctx=auth_ctx, facility_id=facility_id, payload=payload
     )
-    await db.commit()
-    await db.refresh(rule)
     return InsuranceRuleResponse.model_validate(rule)
 
 
@@ -382,8 +374,6 @@ async def patch_insurance_rule(
     rule = await service.patch_insurance_rule(
         db=db, auth_ctx=auth_ctx, rule_id=rule_id, payload=payload
     )
-    await db.commit()
-    await db.refresh(rule)
     return InsuranceRuleResponse.model_validate(rule)
 
 
@@ -412,6 +402,4 @@ async def create_contact(
     contact = await service.create_contact(
         db=db, auth_ctx=auth_ctx, facility_id=facility_id, payload=payload
     )
-    await db.commit()
-    await db.refresh(contact)
     return FacilityContactResponse.model_validate(contact)

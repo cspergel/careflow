@@ -7,13 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { apiClient, ApiError } from "@/client"
 
 interface AnalyticsData {
-  placement_rate: number
-  avg_days_to_placement: number
-  active_cases: number
-  placed_this_month: number
-  declined_this_month: number
-  top_decline_reasons: { reason: string; count: number }[]
-  status_breakdown: { status: string; count: number }[]
+  total_cases: number
+  cases_by_status: Record<string, number>
+  placement_rate_pct: number
+  avg_placement_days?: number | null
+  stage_metrics: { stage_name: string; avg_cycle_hours: number; case_count: number }[]
+  date_from: string
+  date_to: string
+  generated_at: string
 }
 
 export function AnalyticsDashboard() {
@@ -23,7 +24,7 @@ export function AnalyticsDashboard() {
 
   React.useEffect(() => {
     apiClient
-      .fetch<AnalyticsData>("/api/v1/analytics/summary")
+      .fetch<AnalyticsData>("/api/v1/analytics/dashboard")
       .then(setAnalytics)
       .catch((err) => {
         setError(
@@ -61,10 +62,12 @@ export function AnalyticsDashboard() {
   if (error || !analytics) {
     return (
       <div className="rounded-lg border bg-card p-6 text-center text-muted-foreground text-sm">
-        Analytics data not available — {error ?? "ensure the FastAPI backend is running"}
+        Analytics data not available. Try refreshing the page, or contact your administrator if the issue persists.
       </div>
     )
   }
+
+  const statusEntries = Object.entries(analytics.cases_by_status)
 
   return (
     <div className="space-y-6">
@@ -73,12 +76,23 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Cases
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold">{analytics.total_cases}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
               Placement Rate
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-emerald-600">
-              {(analytics.placement_rate * 100).toFixed(1)}%
+              {analytics.placement_rate_pct.toFixed(1)}%
             </p>
           </CardContent>
         </Card>
@@ -91,7 +105,9 @@ export function AnalyticsDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">
-              {analytics.avg_days_to_placement.toFixed(1)}
+              {analytics.avg_placement_days != null
+                ? analytics.avg_placement_days.toFixed(1)
+                : "—"}
             </p>
           </CardContent>
         </Card>
@@ -99,42 +115,29 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Placed This Month
+              Stage Metrics
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{analytics.placed_this_month}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Declined This Month
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-amber-600">
-              {analytics.declined_this_month}
-            </p>
+            <p className="text-3xl font-bold">{analytics.stage_metrics.length}</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Status breakdown */}
-      {analytics.status_breakdown.length > 0 && (
+      {statusEntries.length > 0 && (
         <div>
           <h2 className="text-base font-semibold mb-3">Cases by Status</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {analytics.status_breakdown.map((item) => (
-              <Card key={item.status}>
+            {statusEntries.map(([status, count]) => (
+              <Card key={status}>
                 <CardHeader className="pb-1 pt-4 px-4">
                   <CardTitle className="text-xs text-muted-foreground capitalize">
-                    {item.status.replace(/_/g, " ")}
+                    {status.replace(/_/g, " ")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 pb-4">
-                  <p className="text-2xl font-bold">{item.count}</p>
+                  <p className="text-2xl font-bold">{count}</p>
                 </CardContent>
               </Card>
             ))}
@@ -142,18 +145,18 @@ export function AnalyticsDashboard() {
         </div>
       )}
 
-      {/* Top decline reasons */}
-      {analytics.top_decline_reasons.length > 0 && (
+      {/* Stage metrics */}
+      {analytics.stage_metrics.length > 0 && (
         <div>
-          <h2 className="text-base font-semibold mb-3">Top Decline Reasons</h2>
+          <h2 className="text-base font-semibold mb-3">Stage Cycle Times</h2>
           <div className="space-y-2 max-w-md">
-            {analytics.top_decline_reasons.map((item) => (
+            {analytics.stage_metrics.map((item) => (
               <div
-                key={item.reason}
+                key={item.stage_name}
                 className="flex items-center justify-between rounded-md border px-4 py-2"
               >
-                <span className="text-sm">{item.reason}</span>
-                <span className="text-sm font-bold">{item.count}</span>
+                <span className="text-sm capitalize">{item.stage_name.replace(/_/g, " ")}</span>
+                <span className="text-sm font-bold">{item.avg_cycle_hours.toFixed(1)}h</span>
               </div>
             ))}
           </div>

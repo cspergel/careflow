@@ -123,7 +123,8 @@ export default function OutreachPage() {
           </div>
         )}
 
-        <FilterBar showStatusFilter={false} />
+        {/* F29: pageKey must match CaseTable's pageKey so filter URL params stay in sync */}
+        <FilterBar showStatusFilter={false} pageKey="outreach" />
 
         {/* F11: pageKey namespaces URL params so outreach filters don't contaminate other pages */}
         <CaseTable

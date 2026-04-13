@@ -21,6 +21,13 @@
 **Files:** [placementops/core/auth.py:12]
 **Status:** Active
 
+## D-core-5-phi-log-filter
+**Nodes:** core-infrastructure
+**Choice:** Log filter that redacts known PHI field names (patient_name, dob, mrn, etc.) from structured log records
+**Why:** HIPAA requires that PHI not appear in application logs; filter approach covers all log sites without requiring per-callsite scrubbing
+**Files:** [placementops/core/middleware.py:11]
+**Status:** Active
+
 ## D-auth-3-rate-limiter-module-state
 **Nodes:** auth-module
 **Choice:** In-process defaultdict(deque) per spec
@@ -102,7 +109,7 @@
 **Nodes:** facilities-module
 **Choice:** SELECT then INSERT/UPDATE for upsert
 **Why:** SQLite in tests does not support PostgreSQL ON CONFLICT syntax; merge() does SELECT+INSERT which works across both backends
-**Files:** [placementops/modules/facilities/service.py:374]
+**Files:** [placementops/modules/facilities/service.py:378]
 **Status:** Active
 
 ## D-matching-1-haversine-step-function
@@ -137,14 +144,14 @@
 **Nodes:** outreach-module
 **Choice:** Defer commit until first transition_case_status call
 **Why:** removing the early commit at this point means the OutreachAction and audit row are flushed (visible within the session) but not yet committed; the first transition_case_status call will commit them together with the first case-status change, achieving the atomicity required by F3
-**Files:** [placementops/modules/outreach/service.py:310]
+**Files:** [placementops/modules/outreach/service.py:342]
 **Status:** Active
 
 ## D-outreach-3-405-explicit-handlers
 **Nodes:** outreach-module
 **Choice:** Explicit POST/PATCH/DELETE handlers on /templates/outreach return 405
 **Why:** FastAPI does not automatically return 405 for unregistered methods; explicit handlers with raise HTTPException(405) are required to satisfy AC10's method-not-allowed constraint
-**Files:** [placementops/modules/outreach/router.py:27]
+**Files:** [placementops/modules/outreach/router.py:30]
 **Status:** Active
 
 ## D-outcomes-1-pre-flush-atomicity
@@ -200,7 +207,7 @@
 **Nodes:** analytics-module
 **Choice:** Stage cycle hours computed in Python after fetching (h1.entered_at, h2.entered_at) pairs
 **Why:** func.extract("epoch", timedelta) is PostgreSQL-only; Python datetime arithmetic works on both SQLite (tests) and PostgreSQL (production).
-**Files:** [placementops/modules/analytics/service.py:446]
+**Files:** [placementops/modules/analytics/service.py:484]
 **Status:** Active
 
 ## D-admin-1-allowed-variables-allowlist

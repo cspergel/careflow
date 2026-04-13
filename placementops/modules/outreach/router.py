@@ -13,6 +13,7 @@ Outreach module FastAPI router.
 
 Endpoints:
   POST  /api/v1/cases/{case_id}/outreach-actions             — create (AC1, AC8)
+  GET   /api/v1/cases/{case_id}/outreach-actions             — per-case action history (F10)
   PATCH /api/v1/outreach-actions/{action_id}                 — edit draft (AC3)
   POST  /api/v1/outreach-actions/{action_id}/submit-for-approval — submit (AC4)
   POST  /api/v1/outreach-actions/{action_id}/approve         — approve (AC5)
@@ -23,6 +24,8 @@ Endpoints:
   POST|PATCH|DELETE /api/v1/templates/outreach               — 405 (AC10)
 
 Role enforcement: placement_coordinator or admin only for all mutating endpoints.
+GET /queues/outreach: placement_coordinator, manager, admin (F9).
+GET /cases/{case_id}/outreach-actions: placement_coordinator, manager, admin (F10).
 """
 # @forgeplan-decision: D-outreach-3-405-explicit-handlers -- Explicit POST/PATCH/DELETE handlers on /templates/outreach return 405. Why: FastAPI does not automatically return 405 for unregistered methods; explicit handlers with raise HTTPException(405) are required to satisfy AC10's method-not-allowed constraint
 
@@ -39,6 +42,7 @@ from placementops.core.database import get_db
 from placementops.modules.auth.dependencies import require_role, require_write_permission
 from placementops.modules.outreach import service
 from placementops.modules.outreach.schemas import (
+    CaseOutreachActionListResponse,
     OutreachActionCreate,
     OutreachActionPatch,
     OutreachActionResponse,
@@ -51,6 +55,9 @@ router = APIRouter(tags=["outreach"])
 
 # Roles permitted for all mutating outreach operations
 _OUTREACH_WRITE_ROLES = ("placement_coordinator", "admin")
+
+# Roles permitted for read-only outreach operations (F9, F10)
+_OUTREACH_READ_ROLES = ("placement_coordinator", "manager", "admin")
 
 
 # ---------------------------------------------------------------------------
@@ -92,6 +99,41 @@ async def create_outreach_action(
         auth_ctx=auth,
     )
     return OutreachActionResponse.model_validate(action)
+
+
+# ---------------------------------------------------------------------------
+# F10 — Per-case outreach action history
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/cases/{case_id}/outreach-actions",
+    response_model=CaseOutreachActionListResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[require_role(*_OUTREACH_READ_ROLES)],
+)
+async def get_case_outreach_actions(
+    case_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(get_auth_context),
+) -> CaseOutreachActionListResponse:
+    """
+    Return outreach action history for a specific case (F10).
+
+    Scoped to the authenticated user's organization.
+    Returns 404 if the case is not found or does not belong to the org.
+    Roles: placement_coordinator, manager, admin.
+    """
+    items, total = await service.get_case_outreach_actions(
+        session=db,
+        case_id=case_id,
+        auth_ctx=auth,
+    )
+    return CaseOutreachActionListResponse(
+        items=[OutreachActionResponse.model_validate(a) for a in items],
+        total=total,
+        case_id=case_id,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -282,6 +324,7 @@ async def cancel_action(
     "/queues/outreach",
     response_model=OutreachQueueResponse,
     status_code=status.HTTP_200_OK,
+    dependencies=[require_role(*_OUTREACH_READ_ROLES)],
 )
 async def get_outreach_queue(
     approval_status: str | None = Query(default=None, description="Filter by approval_status"),
@@ -337,6 +380,10 @@ async def get_templates(
     )
 
 
+# F13: Explicit route registration order — GET must be registered BEFORE the 405
+# method-not-allowed handlers on the same path. FastAPI resolves routes in
+# registration order; if a 405 handler were registered first, GET requests would
+# incorrectly match that handler and return 405 instead of 200. Do NOT reorder.
 # AC10: Return 405 for POST/PATCH/DELETE on /templates/outreach
 # These are explicitly defined to prevent fallthrough to 404.
 

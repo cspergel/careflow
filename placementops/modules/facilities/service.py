@@ -5,7 +5,7 @@ Database operations for the facilities module.
 All write operations:
   1. Apply the business logic (upsert, update, etc.)
   2. Emit an AuditEvent via emit_audit_event()
-  3. Commit the transaction (caller owns the commit in the router)
+  3. Commit and refresh the ORM object (service owns the commit)
 
 Organization isolation is enforced at the application layer by filtering
 all queries on organization_id=auth_ctx.organization_id. This is defense-
@@ -228,6 +228,8 @@ async def create_facility(
             "facility_type": facility.facility_type,
         },
     )
+    await db.commit()
+    await db.refresh(facility)
     return facility
 
 
@@ -334,6 +336,8 @@ async def patch_facility(
         old_value=old_values or None,
         new_value=new_values or None,
     )
+    await db.commit()
+    await db.refresh(facility)
     return facility
 
 
@@ -393,6 +397,8 @@ async def upsert_capabilities(
         actor_user_id=auth_ctx.user_id,
         new_value={**flag_data, "last_verified_at": now.isoformat()},
     )
+    await db.commit()
+    await db.refresh(capabilities)
     return capabilities
 
 
@@ -435,6 +441,8 @@ async def create_contact(
         actor_user_id=auth_ctx.user_id,
         new_value={"contact_name": contact.contact_name, "facility_id": facility_id},
     )
+    await db.commit()
+    await db.refresh(contact)
     return contact
 
 
@@ -481,6 +489,8 @@ async def create_insurance_rule(
             "last_verified_at": now.isoformat(),
         },
     )
+    await db.commit()
+    await db.refresh(rule)
     return rule
 
 
@@ -539,4 +549,6 @@ async def patch_insurance_rule(
         old_value=old_values or None,
         new_value=new_values,
     )
+    await db.commit()
+    await db.refresh(rule)
     return rule

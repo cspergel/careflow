@@ -2,7 +2,7 @@
   "node_id": "core-infrastructure",
   "status": "reviewed",
   "node_type": "database",
-  "file_count": 62,
+  "file_count": 64,
   "test_file_count": 0,
   "dependency_count": 0,
   "connection_count": 9,
@@ -27,7 +27,8 @@
   "decision_ids": [
     "D-core-4-select-for-update",
     "D-core-1-nullpool-supavisor",
-    "D-core-2-jwt-alg-detection"
+    "D-core-2-jwt-alg-detection",
+    "D-core-5-phi-log-filter"
   ],
   "constraints": [
     "Use PyJWT[cryptography] for JWT validation — NOT python-jose (abandoned library)",

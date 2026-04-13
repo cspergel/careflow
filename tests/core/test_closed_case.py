@@ -13,6 +13,7 @@ from fastapi import FastAPI, Depends
 from fastapi import HTTPException
 from httpx import AsyncClient, ASGITransport
 
+from placementops.core.auth import AuthContext, get_auth_context
 from placementops.core.database import get_db
 from placementops.core.middleware import check_case_not_closed
 
@@ -22,12 +23,22 @@ pytestmark = pytest.mark.asyncio
 @pytest.fixture
 def app_with_closed_guard(db_session):
     """FastAPI app with check_case_not_closed dependency on write endpoints."""
+    from tests.core.conftest import TEST_ORG_ID, TEST_USER_ID
+
     app = FastAPI()
 
     async def override_db():
         yield db_session
 
+    def override_auth():
+        return AuthContext(
+            user_id=TEST_USER_ID,
+            organization_id=TEST_ORG_ID,
+            role_key="intake_staff",
+        )
+
     app.dependency_overrides[get_db] = override_db
+    app.dependency_overrides[get_auth_context] = override_auth
     handler_call_count = {"count": 0}
 
     @app.patch("/api/v1/cases/{case_id}")

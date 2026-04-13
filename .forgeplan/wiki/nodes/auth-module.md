@@ -3,7 +3,7 @@
 ## Operational Summary
 - **Status:** reviewed
 - **Node type:** service
-- **Tracked files:** 14
+- **Tracked files:** 15
 - **Test files:** 0
 - **Dependencies:** 1 | **Connections:** 9
 - **Recent issues:** review/reviewer: `router.py` | review/reviewer: `dependencies.py` | review/reviewer: `service.py`

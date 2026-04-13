@@ -17,8 +17,10 @@ from typing import Callable
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from placementops.core.auth import AuthContext, get_auth_context
 from placementops.core.database import get_db
 
 # PHI field names that must never appear in logs
@@ -108,11 +110,22 @@ def check_case_not_closed(case_id_param: str = "case_id") -> Callable:
     async def _dependency(
         case_id: UUID,
         session: AsyncSession = Depends(get_db),
+        auth: AuthContext = Depends(get_auth_context),
     ) -> None:
         # @forgeplan-spec: AC11
         from placementops.core.models.patient_case import PatientCase
 
-        case = await session.get(PatientCase, str(case_id))
+        # F3: Filter by organization_id to prevent cross-tenant case access.
+        # Using select with org_id guard instead of session.get() ensures that a case
+        # belonging to a different organisation returns 404 rather than 409, preventing
+        # an attacker from probing closed status across tenant boundaries.
+        result = await session.execute(
+            select(PatientCase).where(
+                PatientCase.id == str(case_id),
+                PatientCase.organization_id == str(auth.organization_id),
+            )
+        )
+        case = result.scalar_one_or_none()
         if case is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

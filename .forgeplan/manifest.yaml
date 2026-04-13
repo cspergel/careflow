@@ -446,6 +446,8 @@ nodes:
       - alembic/versions/0002_rls_policies.py
       - placementops/core/database.py
       - placementops/core/auth.py
+      - placementops/core/middleware.py
+      - tests/core/test_closed_case.py
     spec: .forgeplan/specs/core-infrastructure.md
     description: "Shared foundation: SQLAlchemy base models for all 20+ tables, Supabase JWT auth middleware, organization_id tenant isolation middleware (defense-in-depth with Supabase RLS), audit logging hooks, case activity event bus, state machine transition allowlist enforcement, and Alembic migrations."
     acceptance_criteria:
@@ -494,6 +496,7 @@ nodes:
       - placementops/modules/auth/tests/test_logout.py
       - placementops/modules/auth/tests/test_rbac.py
       - placementops/modules/auth/tests/helpers.py
+      - placementops/modules/auth/middleware.py
     spec: .forgeplan/specs/auth-module.md
     description: Supabase Auth integration for login/logout/session. Role-based permission matrix enforcement across all 6 roles. Organization-scoped user management. read_only role defined (view-only access to all data, no writes anywhere).
     acceptance_criteria:

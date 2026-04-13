@@ -77,6 +77,56 @@ MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
 # ---------------------------------------------------------------------------
+# Upload validation helper
+# ---------------------------------------------------------------------------
+
+
+async def validate_upload_file(file: UploadFile) -> bytes:
+    """
+    Validate an uploaded file and return its bytes.
+
+    Performs, in order:
+      1. Content-type check → 415 if not XLSX or CSV
+      2. Size check (reads at most MAX_UPLOAD_BYTES+1 bytes) → 413 if too large
+      3. ZIP bomb detection via service.check_zip_bomb → 400 if triggered
+
+    Returns the raw file bytes on success so callers do not need to re-read
+    the UploadFile (which has already been consumed).
+
+    Raises:
+        HTTPException(415): unsupported content-type
+        HTTPException(413): file exceeds MAX_UPLOAD_BYTES
+        HTTPException(400): ZIP bomb detected
+    """
+    if file.content_type not in ACCEPTED_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"Unsupported file type '{file.content_type}'. Accepted: xlsx, csv",
+        )
+
+    # Read at most MAX_UPLOAD_BYTES+1 bytes — caps memory usage without loading the full file.
+    # If exactly MAX_UPLOAD_BYTES+1 bytes are returned the file exceeds the limit.
+    # (constraint: UploadFile must NOT be accessed in background task — read eagerly here)
+    file_bytes = await file.read(MAX_UPLOAD_BYTES + 1)
+
+    if len(file_bytes) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File too large: {len(file_bytes)} bytes. Maximum is {MAX_UPLOAD_BYTES} bytes.",
+        )
+
+    try:
+        service.check_zip_bomb(file_bytes)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    return file_bytes
+
+
+# ---------------------------------------------------------------------------
 # Case endpoints
 # ---------------------------------------------------------------------------
 
@@ -345,32 +395,7 @@ async def upload_import(
     CRITICAL: file bytes are read EAGERLY here. UploadFile is NOT passed
     to any background task — only raw bytes are.
     """
-    # Content-type validation BEFORE reading body
-    if file.content_type not in ACCEPTED_CONTENT_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=f"Unsupported file type '{file.content_type}'. Accepted: xlsx, csv",
-        )
-
-    # Read at most MAX_UPLOAD_BYTES+1 bytes — caps memory usage without loading the full file.
-    # If exactly MAX_UPLOAD_BYTES+1 bytes are returned the file exceeds the limit.
-    # (constraint: UploadFile must NOT be accessed in background task — read eagerly here)
-    file_bytes = await file.read(MAX_UPLOAD_BYTES + 1)
-
-    if len(file_bytes) > MAX_UPLOAD_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File too large: {len(file_bytes)} bytes. Maximum is {MAX_UPLOAD_BYTES} bytes.",
-        )
-
-    # ZIP bomb detection BEFORE any spreadsheet parsing
-    try:
-        service.check_zip_bomb(file_bytes)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+    file_bytes = await validate_upload_file(file)
 
     # Create ImportJob in DB (MUST be persisted before endpoint returns)
     job = await service.create_import_job(
@@ -423,25 +448,7 @@ async def validate_import(
 
     Returns per-row validation results. Advances ImportJob to status=ready.
     """
-    # Content-type validation
-    if file.content_type not in ACCEPTED_CONTENT_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=f"Unsupported file type '{file.content_type}'.",
-        )
-
-    file_bytes = await file.read(MAX_UPLOAD_BYTES + 1)
-
-    if len(file_bytes) > MAX_UPLOAD_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="File too large",
-        )
-
-    try:
-        service.check_zip_bomb(file_bytes)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    file_bytes = await validate_upload_file(file)
 
     job, row_results = await service.validate_import(
         session=db,
@@ -478,26 +485,8 @@ async def commit_import(
     Returns 202 immediately. Background task opens FRESH AsyncSessionLocal.
     File bytes are read eagerly here — UploadFile is NEVER passed to the task.
     """
-    # Content-type validation
-    if file.content_type not in ACCEPTED_CONTENT_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=f"Unsupported file type '{file.content_type}'.",
-        )
-
     # Read bytes eagerly BEFORE returning (constraint: UploadFile must not be accessed after request)
-    file_bytes = await file.read(MAX_UPLOAD_BYTES + 1)
-
-    if len(file_bytes) > MAX_UPLOAD_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="File too large",
-        )
-
-    try:
-        service.check_zip_bomb(file_bytes)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    file_bytes = await validate_upload_file(file)
 
     # Verify import job exists and get column mapping
     job = await service.get_import_job(

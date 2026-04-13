@@ -125,8 +125,8 @@ function TemplatesTab() {
   React.useEffect(() => {
     // F5: correct route is /api/v1/templates/outreach
     apiClient
-      .fetch<{ items: OutreachTemplate[] }>("/api/v1/templates/outreach")
-      .then((data) => setTemplates(data.items))
+      .fetch<{ templates: OutreachTemplate[] }>("/api/v1/templates/outreach")
+      .then((data) => setTemplates(data.templates))
       .catch((err) =>
         setError(
           err instanceof ApiError ? err.message : "Failed to load templates"
@@ -196,7 +196,7 @@ function ImportJobsTab() {
 
   React.useEffect(() => {
     apiClient
-      .fetch<{ items: ImportJob[] }>("/api/v1/intake/imports?limit=20")
+      .fetch<{ items: ImportJob[] }>("/api/v1/imports?page_size=20")
       .then((data) => setJobs(data.items))
       .catch((err) =>
         setError(err instanceof ApiError ? err.message : "Failed to load import jobs")
@@ -276,8 +276,8 @@ function OrgSettingsTab() {
   // F20: Fetch current org settings on mount so the input is pre-populated
   React.useEffect(() => {
     apiClient
-      .fetch<{ name: string }>("/api/v1/admin/organization")
-      .then((data) => setOrgName(data.name ?? ""))
+      .fetch<{ org_name: string }>("/api/v1/admin/organization")
+      .then((data) => setOrgName(data.org_name ?? ""))
       .catch(() => {
         // Non-critical — input remains empty
       })
@@ -290,7 +290,7 @@ function OrgSettingsTab() {
     try {
       await apiClient.fetch("/api/v1/admin/organization", {
         method: "PATCH",
-        body: JSON.stringify({ name: orgName }),
+        body: JSON.stringify({ org_name: orgName }),
       })
       setSaveMessage("Settings saved.")
     } catch (err) {

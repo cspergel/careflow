@@ -13,7 +13,7 @@ interface KpiData {
   cases_by_status: Record<string, number>
   placement_rate_pct: number
   stage_metrics?: Record<string, unknown>
-  avg_placement_days?: number
+  avg_placement_days?: number | null
 }
 
 /**
@@ -54,7 +54,7 @@ export function DashboardKPIs() {
   if (error) {
     return (
       <div className="rounded-md bg-muted px-4 py-3 text-sm text-muted-foreground">
-        KPI data unavailable — {error}
+        KPI data unavailable. Try refreshing the page, or contact your administrator if the issue persists.
       </div>
     )
   }
