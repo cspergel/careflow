@@ -10,6 +10,9 @@ Feature-module routers are imported here when those modules are built.
 import os
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
+load_dotenv()  # Load .env before any os.getenv() calls
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 

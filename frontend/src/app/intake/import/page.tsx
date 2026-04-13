@@ -11,6 +11,8 @@ import {
   AlertTriangle,
   ArrowLeft,
   RefreshCw,
+  Download,
+  FileSpreadsheet,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +20,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { apiClient, ApiError } from "@/client"
 import type { ImportJob } from "@shared/types"
 import { formatDateTime } from "@/lib/utils"
+
+// Column definitions shown in the format guide and used to generate the CSV template
+const TEMPLATE_COLUMNS = [
+  { key: "patient_name",          label: "Patient Name",          required: true,  example: "Jane Smith" },
+  { key: "dob",                   label: "Date of Birth",          required: false, example: "1945-03-22" },
+  { key: "mrn",                   label: "MRN",                    required: false, example: "MRN123456" },
+  { key: "hospital_unit",         label: "Hospital Unit",          required: false, example: "4 North" },
+  { key: "room_number",           label: "Room Number",            required: false, example: "412B" },
+  { key: "primary_diagnosis_text",label: "Primary Diagnosis",      required: false, example: "CVA with right hemiplegia" },
+  { key: "insurance_primary",     label: "Primary Insurance",      required: false, example: "Medicare Part A" },
+  { key: "discharge_target_date", label: "Discharge Target Date",  required: false, example: "2026-04-15" },
+  { key: "priority_level",        label: "Priority Level",         required: false, example: "routine" },
+]
+
+function downloadTemplateCsv() {
+  const header = TEMPLATE_COLUMNS.map((c) => c.label).join(",")
+  const example = TEMPLATE_COLUMNS.map((c) => `"${c.example}"`).join(",")
+  const csv = [header, example].join("\n")
+  const blob = new Blob([csv], { type: "text/csv" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = "patient_import_template.csv"
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 // @forgeplan-decision: D-frontend-6-rsi-dynamic-import -- react-spreadsheet-import loaded with next/dynamic + ssr:false. Why: library uses Chakra UI internally and browser-only APIs; SSR would fail
 const ReactSpreadsheetImport = dynamic(
@@ -237,17 +265,64 @@ export default function IntakeImportPage() {
 
         {/* Phase: Upload */}
         {phase === "upload" && (
-          <div className="flex flex-col items-center justify-center min-h-64 gap-6">
-            <div className="text-center">
-              <h2 className="text-lg font-semibold">Upload Patient Census</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Upload an Excel or CSV file to import multiple cases at once.
-                You will be able to map columns before committing.
-              </p>
+          <div className="max-w-3xl space-y-8">
+            {/* Action row */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <Button size="lg" onClick={() => setIsOpen(true)} className="gap-2">
+                <FileSpreadsheet className="h-5 w-5" />
+                Choose File to Import
+              </Button>
+              <Button size="lg" variant="outline" onClick={downloadTemplateCsv} className="gap-2">
+                <Download className="h-4 w-4" />
+                Download Blank Template
+              </Button>
             </div>
-            <Button size="lg" onClick={() => setIsOpen(true)}>
-              Choose File to Import
-            </Button>
+
+            {/* Format guide */}
+            <div className="rounded-lg border bg-card">
+              <div className="px-5 py-4 border-b">
+                <h2 className="text-sm font-semibold">Spreadsheet Format Guide</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Your file must be XLSX or CSV. Column headers are flexible — the importer
+                  will ask you to map your columns to the fields below. Only Patient Name is required.
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/40">
+                      <th className="text-left px-5 py-2.5 font-medium text-xs text-muted-foreground">Field</th>
+                      <th className="text-left px-5 py-2.5 font-medium text-xs text-muted-foreground">Required</th>
+                      <th className="text-left px-5 py-2.5 font-medium text-xs text-muted-foreground">Example Value</th>
+                      <th className="text-left px-5 py-2.5 font-medium text-xs text-muted-foreground">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {TEMPLATE_COLUMNS.map((col, i) => (
+                      <tr key={col.key} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                        <td className="px-5 py-2.5 font-medium">{col.label}</td>
+                        <td className="px-5 py-2.5">
+                          {col.required ? (
+                            <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">Required</Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Optional</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-2.5 font-mono text-xs text-muted-foreground">{col.example}</td>
+                        <td className="px-5 py-2.5 text-xs text-muted-foreground">
+                          {col.key === "dob" && "YYYY-MM-DD format preferred"}
+                          {col.key === "priority_level" && "routine, urgent, or emergent"}
+                          {col.key === "discharge_target_date" && "YYYY-MM-DD format preferred"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="px-5 py-3 border-t bg-muted/20 text-xs text-muted-foreground">
+                Tip: Your column headers do not need to match exactly — the importer will let you drag and drop to match your columns to these fields.
+              </div>
+            </div>
           </div>
         )}
 
