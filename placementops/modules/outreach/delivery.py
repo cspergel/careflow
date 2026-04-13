@@ -40,6 +40,10 @@ _TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 _TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 _TWILIO_FROM_PHONE = os.getenv("TWILIO_FROM_PHONE")
 
+# Set OUTREACH_DELIVERY_MODE=log to print outgoing messages to the console
+# instead of calling Resend/Twilio. Useful for local smoke testing.
+_DELIVERY_MODE = os.getenv("OUTREACH_DELIVERY_MODE", "live")  # "live" | "log"
+
 _EMAIL_CHANNELS = frozenset({"email"})
 _SMS_CHANNELS = frozenset({"sms", "voicemail_drop"})
 _BYPASS_CHANNELS = frozenset({"phone_manual", "task"})
@@ -68,8 +72,31 @@ async def _get_primary_contact(
     return contact
 
 
+def _log_delivery(channel: str, to: str, action: OutreachAction) -> str:
+    """Print outgoing message to console instead of sending. Returns 'delivered'."""
+    separator = "=" * 60
+    logger.info(
+        "\n%s\n[OUTREACH LOG-ONLY MODE] Would send %s\n"
+        "  action_id : %s\n"
+        "  to        : %s\n"
+        "  subject   : %s\n"
+        "  body      :\n%s\n%s",
+        separator,
+        channel.upper(),
+        action.id,
+        to,
+        action.draft_subject or "(no subject)",
+        action.draft_body or "(no body)",
+        separator,
+    )
+    return "delivered"
+
+
 async def _send_email(action: OutreachAction, to_email: str) -> str:
     """Send email via Resend. Returns delivery_status."""
+    if _DELIVERY_MODE == "log":
+        return _log_delivery("email", to_email, action)
+
     if not _RESEND_API_KEY:
         logger.warning(
             "RESEND_API_KEY not configured — email delivery skipped for action %s",
@@ -108,6 +135,9 @@ async def _send_email(action: OutreachAction, to_email: str) -> str:
 
 async def _send_sms(action: OutreachAction, to_phone: str) -> str:
     """Send SMS via Twilio. Returns delivery_status."""
+    if _DELIVERY_MODE == "log":
+        return _log_delivery("sms", to_phone, action)
+
     if not all([_TWILIO_ACCOUNT_SID, _TWILIO_AUTH_TOKEN, _TWILIO_FROM_PHONE]):
         logger.warning(
             "Twilio env vars not fully configured — SMS delivery skipped for action %s",
