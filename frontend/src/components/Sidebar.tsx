@@ -133,10 +133,10 @@ export function Sidebar({
                 <Link
                   href={item.href}
                   className={cn(
-                    "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    "group flex items-center gap-3 py-2 text-sm font-medium transition-colors border-l-[3px]",
                     isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground border-primary rounded-r-md pl-[9px] pr-3"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground border-transparent rounded-md px-3"
                   )}
                 >
                   <Icon
