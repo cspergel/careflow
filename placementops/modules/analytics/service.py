@@ -394,9 +394,10 @@ async def get_dashboard_report(
     resolved_from, resolved_to = _resolve_date_range(date_from, date_to)
     now_utc = datetime.now(timezone.utc)
 
-    # Convert dates to datetime for comparison with timestamp columns
-    from_dt = datetime.combine(resolved_from, datetime.min.time()).replace(tzinfo=timezone.utc)
-    to_dt = datetime.combine(resolved_to, datetime.max.time()).replace(tzinfo=timezone.utc)
+    # Convert dates to naive UTC datetimes — asyncpg requires naive datetimes for
+    # TIMESTAMP WITHOUT TIME ZONE parameters; timezone-aware objects cause a type error.
+    from_dt = datetime.combine(resolved_from, datetime.min.time())
+    to_dt = datetime.combine(resolved_to, datetime.max.time())
 
     # Total case count and cases by status
     status_count_stmt = (
@@ -570,8 +571,8 @@ async def get_outreach_performance(
     resolved_from, resolved_to = _resolve_date_range(date_from, date_to)
     now_utc = datetime.now(timezone.utc)
 
-    from_dt = datetime.combine(resolved_from, datetime.min.time()).replace(tzinfo=timezone.utc)
-    to_dt = datetime.combine(resolved_to, datetime.max.time()).replace(tzinfo=timezone.utc)
+    from_dt = datetime.combine(resolved_from, datetime.min.time())
+    to_dt = datetime.combine(resolved_to, datetime.max.time())
 
     # --- By facility: group PlacementOutcomes by facility_id
     # accepted = outcome_type IN ('accepted', 'placed')

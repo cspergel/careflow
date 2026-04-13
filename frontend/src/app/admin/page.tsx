@@ -125,8 +125,8 @@ function TemplatesTab() {
   React.useEffect(() => {
     // F5: correct route is /api/v1/templates/outreach
     apiClient
-      .fetch<{ templates: OutreachTemplate[] }>("/api/v1/templates/outreach")
-      .then((data) => setTemplates(data.templates))
+      .fetch<{ items: OutreachTemplate[] }>("/api/v1/templates/outreach")
+      .then((data) => setTemplates(data.items))
       .catch((err) =>
         setError(
           err instanceof ApiError ? err.message : "Failed to load templates"

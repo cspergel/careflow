@@ -16,12 +16,14 @@ depends_on = None
 
 
 def upgrade() -> None:
-    import sys
+    import importlib.util
     import os
-    # Add project root to path so alembic/seed.py can be imported
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-    from alembic.seed import seed_all
-    seed_all(op)
+    # Load alembic/seed.py directly to avoid conflict with the installed `alembic` package name
+    seed_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "seed.py")
+    spec = importlib.util.spec_from_file_location("alembic_seed", seed_path)
+    seed_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(seed_module)
+    seed_module.seed_all(op)
 
 
 def downgrade() -> None:

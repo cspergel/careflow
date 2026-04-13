@@ -197,7 +197,7 @@ def upgrade() -> None:
         sa.Column("template_type", sa.String, nullable=False),
         sa.Column("subject_template", sa.String, nullable=True),
         sa.Column("body_template", sa.String, nullable=False),
-        sa.Column("allowed_variables", JSONB, nullable=False, server_default="'[]'::jsonb"),
+        sa.Column("allowed_variables", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")),
         sa.Column("is_active", sa.Boolean, nullable=False, server_default="true"),
         sa.Column("created_by_user_id", sa.String(36), sa.ForeignKey("users.id"), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),

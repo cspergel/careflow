@@ -133,7 +133,11 @@ export function StatusBadge({
   className,
   showDescription = false,
 }: StatusBadgeProps) {
-  const config = STATUS_CONFIG[status]
+  const config = STATUS_CONFIG[status] ?? {
+    label: status,
+    color: "bg-slate-100 text-slate-600 border-slate-200",
+    description: status,
+  }
 
   return (
     <Badge

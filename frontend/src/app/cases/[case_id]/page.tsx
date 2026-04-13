@@ -97,8 +97,8 @@ export default function CaseDetailPage() {
           apiClient.fetch<{ items: ExistingDraft[] }>(
             `/api/v1/cases/${caseId}/outreach-actions`
           ),
-          // F5: correct route is /api/v1/templates/outreach
-          apiClient.fetch<{ templates: OutreachTemplate[] }>(
+          // F5: correct route is /api/v1/templates/outreach; API returns key `items`
+          apiClient.fetch<{ items: OutreachTemplate[] }>(
             `/api/v1/templates/outreach`
           ),
           apiClient.fetch<{ events: TimelineEvent[] }>(
@@ -115,7 +115,7 @@ export default function CaseDetailPage() {
         setOutreachActions(outreachData.value.items)
       if (templateData.status === "fulfilled") {
         setTemplates(
-          (templateData.value.templates as OutreachTemplate[]).map((t) => ({
+          (templateData.value.items as OutreachTemplate[]).map((t) => ({
             id: t.id,
             template_name: t.template_name,
             template_type: t.template_type,

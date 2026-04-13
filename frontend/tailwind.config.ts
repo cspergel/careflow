@@ -63,11 +63,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [
-    // @forgeplan-spec: AC14 — tw-animate-css per spec constraint 9
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require("tw-animate-css"),
-  ],
+  plugins: [],
 }
 
 export default config
