@@ -94,4 +94,7 @@ app.include_router(outcomes_router, prefix="/api/v1")
 from placementops.modules.analytics.router import router as analytics_router
 app.include_router(analytics_router, prefix="/api/v1")
 
+from placementops.modules.sms.router import router as sms_router
+app.include_router(sms_router, prefix="/api/v1")
+
 # Additional module routers registered here as each node is built:
