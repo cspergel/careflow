@@ -79,6 +79,7 @@ INTAKE_STAFF_FIELDS: frozenset[str] = frozenset({
     "insurance_primary",
     "insurance_secondary",
     "patient_zip",
+    "patient_phone",
     "preferred_geography_text",
     "discharge_target_date",
     "priority_level",
@@ -86,6 +87,7 @@ INTAKE_STAFF_FIELDS: frozenset[str] = frozenset({
 
 PLACEMENT_COORDINATOR_FIELDS: frozenset[str] = frozenset({
     "priority_level",
+    "patient_phone",
     "assigned_coordinator_user_id",
 })
 

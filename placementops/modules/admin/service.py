@@ -43,6 +43,9 @@ ALLOWED_TEMPLATE_VARIABLES: frozenset[str] = frozenset(
         "payer_name",
         "assessment_summary",
         "coordinator_name",
+        "org_name",
+        "hospital_name",
+        "facility_options",
     ]
 )
 
@@ -60,8 +63,10 @@ VALID_ROLE_KEYS: frozenset[str] = frozenset(
 VALID_USER_STATUSES: frozenset[str] = frozenset(["active", "inactive"])
 
 VALID_TEMPLATE_TYPES: frozenset[str] = frozenset(
-    ["email", "phone_manual", "task", "voice_ai_script"]
+    ["email", "phone_manual", "sms", "task", "voice_ai_script"]
 )
+
+VALID_RECIPIENT_TYPES: frozenset[str] = frozenset(["facility", "patient_family"])
 
 
 def _validate_allowed_variables(variables: list[str]) -> None:
@@ -350,6 +355,11 @@ async def create_template(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid template_type '{payload.template_type}'. Must be one of: {sorted(VALID_TEMPLATE_TYPES)}",
         )
+    if payload.recipient_type not in VALID_RECIPIENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid recipient_type '{payload.recipient_type}'. Must be one of: {sorted(VALID_RECIPIENT_TYPES)}",
+        )
     _validate_allowed_variables(payload.allowed_variables)
 
     template = OutreachTemplate(
@@ -357,6 +367,7 @@ async def create_template(
         organization_id=org_id,
         template_name=payload.template_name,
         template_type=payload.template_type,
+        recipient_type=payload.recipient_type,
         subject_template=payload.subject_template,
         body_template=payload.body_template,
         allowed_variables=payload.allowed_variables,
@@ -437,6 +448,11 @@ async def update_template(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid template_type '{payload.template_type}'",
         )
+    if payload.recipient_type is not None and payload.recipient_type not in VALID_RECIPIENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid recipient_type '{payload.recipient_type}'",
+        )
     if payload.allowed_variables is not None:
         _validate_allowed_variables(payload.allowed_variables)
 
@@ -455,6 +471,8 @@ async def update_template(
         template.template_name = payload.template_name
     if payload.template_type is not None:
         template.template_type = payload.template_type
+    if payload.recipient_type is not None:
+        template.recipient_type = payload.recipient_type
     if payload.subject_template is not None:
         template.subject_template = payload.subject_template
     if payload.body_template is not None:

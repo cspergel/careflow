@@ -21,7 +21,10 @@ class OutreachTemplate(Base):
     template_name: Mapped[str] = mapped_column(String, nullable=False)
     template_type: Mapped[str] = mapped_column(
         String, nullable=False
-    )  # email|phone_manual|task|voice_ai_script
+    )  # email|phone_manual|sms|task|voice_ai_script
+    recipient_type: Mapped[str] = mapped_column(
+        String(32), nullable=False, server_default="facility"
+    )  # facility|patient_family
     subject_template: Mapped[str | None] = mapped_column(String, nullable=True)
     body_template: Mapped[str] = mapped_column(String, nullable=False)
     allowed_variables: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)

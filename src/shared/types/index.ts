@@ -41,6 +41,7 @@ export interface PatientCase {
   insurance_primary?: string | null
   insurance_secondary?: string | null
   patient_zip?: string | null
+  patient_phone?: string | null
   preferred_geography_text?: string | null
   discharge_target_date?: string | null
   current_status: CaseStatus
@@ -225,14 +226,18 @@ export interface OutreachAction {
 export type OutreachTemplateType =
   | "email"
   | "phone_manual"
+  | "sms"
   | "task"
   | "voice_ai_script"
+
+export type OutreachTemplateRecipient = "facility" | "patient_family"
 
 export interface OutreachTemplate {
   id: string
   organization_id: string
   template_name: string
   template_type: OutreachTemplateType
+  recipient_type: OutreachTemplateRecipient
   subject_template?: string | null
   body_template: string
   allowed_variables?: string[] | null

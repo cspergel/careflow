@@ -67,6 +67,7 @@ class CasePatchRequest(BaseModel):
     insurance_primary: str | None = None
     insurance_secondary: str | None = None
     patient_zip: str | None = None
+    patient_phone: str | None = None
     preferred_geography_text: str | None = None
     discharge_target_date: date | None = None
     priority_level: str | None = Field(

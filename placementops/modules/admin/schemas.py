@@ -78,7 +78,8 @@ class TemplateResponse(BaseModel):
     id: str
     organization_id: str
     template_name: str
-    template_type: str  # email|phone_manual|task|voice_ai_script
+    template_type: str  # email|phone_manual|sms|task|voice_ai_script
+    recipient_type: str  # facility|patient_family
     subject_template: str | None = None
     body_template: str
     allowed_variables: list  # JSONB stored list (may contain str items)
@@ -99,7 +100,8 @@ class AdminCreateTemplateRequest(BaseModel):
     """Request body for creating an OutreachTemplate."""
 
     template_name: str
-    template_type: str  # email|phone_manual|task|voice_ai_script
+    template_type: str  # email|phone_manual|sms|task|voice_ai_script
+    recipient_type: str = "facility"  # facility|patient_family
     subject_template: str | None = None
     body_template: str
     allowed_variables: list[str] = []
@@ -111,6 +113,7 @@ class AdminUpdateTemplateRequest(BaseModel):
 
     template_name: str | None = None
     template_type: str | None = None
+    recipient_type: str | None = None
     subject_template: str | None = None
     body_template: str | None = None
     allowed_variables: list[str] | None = None

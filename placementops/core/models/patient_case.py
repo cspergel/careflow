@@ -58,6 +58,9 @@ class PatientCase(Base):
     preferred_geography_text: Mapped[str | None] = mapped_column(String, nullable=True)
     discharge_target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
+    # Contact info (added in migration 0007)
+    patient_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
     # Workflow state
     current_status: Mapped[str] = mapped_column(String, nullable=False, default="new")
     priority_level: Mapped[str | None] = mapped_column(String, nullable=True)  # routine|urgent|emergent

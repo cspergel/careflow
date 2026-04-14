@@ -163,16 +163,28 @@ function TemplatesTab() {
                 {template.template_type.replace("_", " ")}
               </p>
             </div>
-            <Badge
-              variant="outline"
-              className={
-                template.is_active
-                  ? "text-xs bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : "text-xs bg-gray-50 text-gray-500 border-gray-200"
-              }
-            >
-              {template.is_active ? "Active" : "Inactive"}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className={
+                  template.recipient_type === "patient_family"
+                    ? "text-xs bg-violet-50 text-violet-700 border-violet-200"
+                    : "text-xs bg-blue-50 text-blue-700 border-blue-200"
+                }
+              >
+                {template.recipient_type === "patient_family" ? "Patient / Family" : "Facility"}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={
+                  template.is_active
+                    ? "text-xs bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "text-xs bg-gray-50 text-gray-500 border-gray-200"
+                }
+              >
+                {template.is_active ? "Active" : "Inactive"}
+              </Badge>
+            </div>
           </div>
           {template.subject_template && (
             <p className="text-xs text-muted-foreground mt-2">

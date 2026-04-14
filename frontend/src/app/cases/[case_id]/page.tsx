@@ -75,6 +75,13 @@ export default function CaseDetailPage() {
   const [selectedFacilityForOutreach, setSelectedFacilityForOutreach] =
     React.useState<string | null>(null)
 
+  // Patient communication state
+  const [smsState, setSmsState] = React.useState<string | null>(null)
+  const [isSendingSms, setIsSendingSms] = React.useState(false)
+  const [smsError, setSmsError] = React.useState<string | null>(null)
+  const [patientPhone, setPatientPhone] = React.useState("")
+  const [isSavingPhone, setIsSavingPhone] = React.useState(false)
+
   React.useEffect(() => {
     loadCaseData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -106,8 +113,10 @@ export default function CaseDetailPage() {
           ),
         ])
 
-      if (caseData.status === "fulfilled") setPatientCase(caseData.value)
-      else setPageError("Failed to load case data")
+      if (caseData.status === "fulfilled") {
+        setPatientCase(caseData.value)
+        setPatientPhone(caseData.value.patient_phone ?? "")
+      } else setPageError("Failed to load case data")
 
       // F7: backend returns key `matches`
       if (matchData.status === "fulfilled") setMatches(matchData.value.matches)
@@ -138,6 +147,16 @@ export default function CaseDetailPage() {
         }
       } catch {
         // No assessment yet — that's OK
+      }
+
+      // Load SMS conversation state if any
+      try {
+        const smsData = await apiClient.fetch<{ state: string } | null>(
+          `/api/v1/cases/${caseId}/sms-conversation`
+        )
+        if (smsData) setSmsState(smsData.state)
+      } catch {
+        // No SMS conversation — that's OK
       }
 
       // F22: Audit endpoint does not exist yet — skip fetch
@@ -261,6 +280,38 @@ export default function CaseDetailPage() {
     await loadCaseData()
   }
 
+  const handleSavePhone = async () => {
+    if (!patientPhone.trim()) return
+    setIsSavingPhone(true)
+    try {
+      await apiClient.fetch(`/api/v1/cases/${caseId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ patient_phone: patientPhone.trim() }),
+      })
+      setPatientCase((prev) => prev ? { ...prev, patient_phone: patientPhone.trim() } : prev)
+    } catch {
+      // Non-critical — will retry next time
+    } finally {
+      setIsSavingPhone(false)
+    }
+  }
+
+  const handleSendSms = async () => {
+    setSmsError(null)
+    setIsSendingSms(true)
+    try {
+      const result = await apiClient.fetch<{ state: string }>(
+        `/api/v1/cases/${caseId}/sms-conversation`,
+        { method: "POST" }
+      )
+      setSmsState(result.state)
+    } catch (err) {
+      setSmsError(err instanceof ApiError ? err.message : "Failed to send SMS")
+    } finally {
+      setIsSendingSms(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="animate-pulse p-6 space-y-4">
@@ -380,7 +431,8 @@ export default function CaseDetailPage() {
 
         <div className="flex-1 overflow-auto">
           {/* Overview tab */}
-          <TabsContent value="overview" className="p-6 mt-0 space-y-4">
+          <TabsContent value="overview" className="p-6 mt-0 space-y-6">
+            {/* Case details grid */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               {[
                 ["Insurance (Primary)", patientCase.insurance_primary ?? "—"],
@@ -400,6 +452,70 @@ export default function CaseDetailPage() {
                   <p className="text-sm font-medium">{value}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Patient / Family Communication */}
+            <div className="rounded-lg border bg-card p-4 space-y-4">
+              <h3 className="text-sm font-semibold">Patient / Family Communication</h3>
+
+              {/* Phone number */}
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">Patient / Family Phone</p>
+                <div className="flex gap-2">
+                  <input
+                    type="tel"
+                    value={patientPhone}
+                    onChange={(e) => setPatientPhone(e.target.value)}
+                    placeholder="+1 (555) 000-0000"
+                    className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleSavePhone}
+                    disabled={isSavingPhone || patientPhone === (patientCase.patient_phone ?? "")}
+                  >
+                    {isSavingPhone ? "Saving…" : "Save"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* SMS status + send button */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">SMS Conversation</p>
+                  <p className="text-sm font-medium capitalize">
+                    {smsState ? smsState.replace(/_/g, " ") : "Not started"}
+                  </p>
+                </div>
+                {(!smsState || smsState === "opted_out") && (
+                  <Button
+                    size="sm"
+                    onClick={handleSendSms}
+                    disabled={isSendingSms || !patientCase.patient_phone}
+                    title={!patientCase.patient_phone ? "Save a phone number first" : undefined}
+                  >
+                    {isSendingSms ? "Sending…" : "Send SMS to Patient"}
+                  </Button>
+                )}
+                {smsState && smsState !== "opted_out" && (
+                  <Badge
+                    variant="outline"
+                    className={
+                      smsState === "completed"
+                        ? "text-xs bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : smsState === "active"
+                        ? "text-xs bg-blue-50 text-blue-700 border-blue-200"
+                        : "text-xs bg-amber-50 text-amber-700 border-amber-200"
+                    }
+                  >
+                    {smsState === "consent_pending" ? "Awaiting Consent" : smsState === "active" ? "In Progress" : "Completed"}
+                  </Badge>
+                )}
+              </div>
+              {smsError && (
+                <p className="text-xs text-destructive">{smsError}</p>
+              )}
             </div>
           </TabsContent>
 
